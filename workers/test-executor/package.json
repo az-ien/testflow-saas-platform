@@ -1,0 +1,29 @@
+{
+  "name": "testflow-worker",
+  "version": "1.0.0",
+  "description": "TestFlow test executor worker",
+  "main": "dist/worker.js",
+  "scripts": {
+    "dev": "ts-node-dev --respawn --transpile-only src/worker.ts",
+    "build": "tsc",
+    "start": "node dist/worker.js"
+  },
+  "dependencies": {
+    "axios": "^1.6.2",
+    "bullmq": "^5.1.0",
+    "dotenv": "^16.3.1",
+    "ioredis": "^5.3.2",
+    "pg": "^8.11.3",
+    "pg-hstore": "^2.3.4",
+    "playwright": "^1.40.0",
+    "sequelize": "^6.35.1",
+    "uuid": "^9.0.1",
+    "winston": "^3.11.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/uuid": "^9.0.7",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.3.2"
+  }
+}
