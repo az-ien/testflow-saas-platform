@@ -1,10 +1,10 @@
 import {
   DataTypes,
   Model,
-  Optional,
   CreationOptional,
   InferAttributes,
   InferCreationAttributes,
+  NonAttribute,
 } from 'sequelize';
 import bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
@@ -38,7 +38,7 @@ export class User extends Model<
   declare updatedAt: CreationOptional<Date>;
 
   // Virtual: full name
-  get fullName(): string {
+  get fullName(): NonAttribute<string> {
     return `${this.firstName} ${this.lastName}`;
   }
 

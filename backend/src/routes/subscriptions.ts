@@ -104,7 +104,7 @@ router.post('/stripe-webhook', async (req: Request, res: Response) => {
   try {
     switch (event.type) {
       case 'checkout.session.completed': {
-        const session = event.data.object as Stripe.CheckoutSession;
+        const session = event.data.object as Stripe.Checkout.Session;
         const { userId, planId } = session.metadata!;
         const limits = PLAN_LIMITS[planId as PlanId];
         await Subscription.update(

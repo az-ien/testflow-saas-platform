@@ -1,4 +1,4 @@
-import { execSync, spawn } from 'child_process';
+import { execFileSync, spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import os from 'os';
@@ -10,7 +10,9 @@ type SupportedFramework = 'playwright' | 'cypress' | 'selenium' | 'pytest' | 'te
 
 interface RunnerCommand {
   command: string;
+  args: string[];
   env?: Record<string, string>;
+  stdoutFile?: string;
 }
 
 interface CommandResult {
@@ -33,7 +35,6 @@ export class TestExecutor {
     this.prepareWorkspace();
 
     let repoUrl = this.data.repoUrl;
-
     if (this.data.repoAccessToken) {
       const url = new URL(repoUrl);
       url.username = 'oauth2';
@@ -42,10 +43,8 @@ export class TestExecutor {
     }
 
     const branch = this.data.repoBranch || 'main';
-    const cmd = `git clone --depth=1 --branch ${branch} "${repoUrl}" "${this.workDir}"`;
-
     this.log(`Cloning ${this.data.repoUrl} (branch: ${branch})...`);
-    this.exec(cmd, os.tmpdir(), 600_000);
+    this.exec('git', ['clone', '--depth=1', '--branch', branch, repoUrl, this.workDir], os.tmpdir(), 600_000);
     fs.mkdirSync(this.resultsDir, { recursive: true });
     this.log('Repository cloned');
   }
@@ -62,13 +61,13 @@ export class TestExecutor {
       this.installNodeDependencies();
     }
 
-    if (hasRequirements || hasPyproject || this.data.framework === 'pytest' || this.isPythonPlaywrightRepo()) {
+    if (hasRequirements || hasPyproject || this.data.framework === 'pytest' || this.data.framework === 'selenium' || this.isPythonPlaywrightRepo()) {
       this.installPythonDependencies(hasRequirements);
     }
 
     if (hasPomXml) {
       this.log('Resolving Maven dependencies...');
-      this.exec('mvn -B dependency:resolve -q', this.workDir, 600_000);
+      this.exec(this.bin('mvn'), ['-B', 'dependency:resolve', '-q'], this.workDir, 600_000);
     }
 
     if (!hasPackageJson && !hasRequirements && !hasPyproject && !hasPomXml) {
@@ -82,7 +81,7 @@ export class TestExecutor {
     this.log(`Running ${this.data.framework} tests...`);
 
     const runner = this.buildCommand();
-    this.log(`Command: ${runner.command}`);
+    this.log(`Command: ${this.formatCommand(runner)}`);
 
     const result = await this.execAsync(runner, this.workDir);
     const results = this.parseResults();
@@ -137,35 +136,38 @@ export class TestExecutor {
     this.log('Installing Node.js dependencies...');
 
     if (this.exists('pnpm-lock.yaml')) {
-      this.exec('corepack pnpm install --frozen-lockfile', this.workDir, 600_000);
+      this.execNodeTool('corepack', ['pnpm', 'install', '--frozen-lockfile'], this.workDir, 600_000);
     } else if (this.exists('yarn.lock')) {
-      this.exec('corepack yarn install --frozen-lockfile', this.workDir, 600_000);
+      this.execNodeTool('corepack', ['yarn', 'install', '--frozen-lockfile'], this.workDir, 600_000);
     } else if (this.exists('package-lock.json')) {
-      this.exec('npm ci', this.workDir, 600_000);
+      this.execNodeTool('npm', ['ci'], this.workDir, 600_000);
     } else {
-      this.exec('npm install', this.workDir, 600_000);
+      this.execNodeTool('npm', ['install'], this.workDir, 600_000);
     }
 
     if (this.data.framework === 'playwright') {
       this.log('Ensuring Playwright Chromium browser is installed...');
-      this.exec('npx playwright install chromium', this.workDir, 600_000);
+      this.execNodeTool('npx', ['playwright', 'install', 'chromium'], this.workDir, 600_000);
     }
   }
 
   private installPythonDependencies(hasRequirements: boolean): void {
     this.log('Installing Python dependencies...');
 
+    this.ensurePythonVirtualEnv();
+    const python = this.pythonExecutable();
+
     if (hasRequirements) {
-      this.exec('python3 -m pip install -r requirements.txt -q', this.workDir, 600_000);
+      this.exec(python, ['-m', 'pip', 'install', '-r', 'requirements.txt', '-q'], this.workDir, 600_000);
     }
 
     if (this.data.framework === 'pytest' || this.data.framework === 'selenium') {
-      this.exec('python3 -m pip install pytest pytest-json-report -q', this.workDir, 600_000);
+      this.exec(python, ['-m', 'pip', 'install', 'pytest', 'pytest-json-report', '-q'], this.workDir, 600_000);
     }
 
     if (this.isPythonPlaywrightRepo()) {
-      this.exec('python3 -m pip install pytest pytest-json-report pytest-playwright playwright -q', this.workDir, 600_000);
-      this.exec('python3 -m playwright install chromium', this.workDir, 600_000);
+      this.exec(python, ['-m', 'pip', 'install', 'pytest', 'pytest-json-report', 'pytest-playwright', 'playwright', '-q'], this.workDir, 600_000);
+      this.exec(python, ['-m', 'playwright', 'install', 'chromium'], this.workDir, 600_000);
     }
   }
 
@@ -177,32 +179,43 @@ export class TestExecutor {
       case 'playwright':
         if (this.isPythonPlaywrightRepo()) {
           return {
-            command: `python3 -m pytest${this.arg(pattern)} --json-report --json-report-file=test-results/pytest-results.json -v`,
+            command: this.pythonExecutable(),
+            args: ['-m', 'pytest', ...this.patternArgs(pattern), '--json-report', '--json-report-file=test-results/pytest-results.json', '-v'],
           };
         }
 
         return {
-          command: `npx playwright test${this.arg(pattern)} --reporter=json`,
+          ...this.nodeTool('npx', ['playwright', 'test', ...this.patternArgs(pattern), '--reporter=json']),
           env: { PLAYWRIGHT_JSON_OUTPUT_NAME: path.join(this.resultsDir, 'playwright-results.json') },
         };
       case 'cypress':
         return {
-          command: `npx cypress run${pattern ? ` --spec "${pattern}"` : ''} --reporter junit --reporter-options "mochaFile=test-results/cypress-[hash].xml,toConsole=false"`,
+          ...this.nodeTool('npx', [
+            'cypress',
+            'run',
+            ...this.cypressSpecArgs(pattern),
+            '--reporter',
+            'junit',
+            '--reporter-options',
+            'mochaFile=test-results/cypress-[hash].xml,toConsole=false',
+          ]),
         };
       case 'jest':
         return {
-          command: `npx jest${this.arg(pattern)} --json --outputFile=test-results/jest-results.json --testLocationInResults`,
+          ...this.nodeTool('npx', ['jest', ...this.patternArgs(pattern), '--json', '--outputFile=test-results/jest-results.json', '--testLocationInResults']),
         };
       case 'mocha':
         return {
-          command: `npx mocha${this.arg(pattern)} --reporter json > test-results/mocha-results.json`,
+          ...this.nodeTool('npx', ['mocha', ...this.patternArgs(pattern), '--reporter', 'json']),
+          stdoutFile: path.join(this.resultsDir, 'mocha-results.json'),
         };
       case 'pytest':
         return {
-          command: `python3 -m pytest${this.arg(pattern)} --json-report --json-report-file=test-results/pytest-results.json -v`,
+          command: this.pythonExecutable(),
+          args: ['-m', 'pytest', ...this.patternArgs(pattern), '--json-report', '--json-report-file=test-results/pytest-results.json', '-v'],
         };
       case 'testng':
-        return { command: 'mvn -B test -Dsurefire.useFile=true' };
+        return { command: this.bin('mvn'), args: ['-B', 'test', '-Dsurefire.useFile=true'] };
       case 'selenium':
         return this.buildSeleniumCommand(pattern);
       default:
@@ -212,15 +225,16 @@ export class TestExecutor {
 
   private buildSeleniumCommand(pattern?: string): RunnerCommand {
     if (this.exists('pom.xml')) {
-      return { command: 'mvn -B test -Dsurefire.useFile=true' };
+      return { command: this.bin('mvn'), args: ['-B', 'test', '-Dsurefire.useFile=true'] };
     }
 
     if (this.exists('package.json')) {
-      return { command: 'npm test' };
+      return this.nodeTool('npm', ['test']);
     }
 
     return {
-      command: `python3 -m pytest${this.arg(pattern)} --json-report --json-report-file=test-results/pytest-results.json -v`,
+      command: this.pythonExecutable(),
+      args: ['-m', 'pytest', ...this.patternArgs(pattern), '--json-report', '--json-report-file=test-results/pytest-results.json', '-v'],
     };
   }
 
@@ -455,8 +469,62 @@ export class TestExecutor {
       || this.findFiles(this.workDir, /\.py$/).length > 0;
   }
 
-  private arg(value?: string): string {
-    return value ? ` ${value}` : '';
+  private patternArgs(value?: string): string[] {
+    return value ? [value] : [];
+  }
+
+  private cypressSpecArgs(pattern?: string): string[] {
+    return pattern ? ['--spec', pattern] : [];
+  }
+
+  private bin(name: 'mvn'): string {
+    return process.platform === 'win32' ? `${name}.cmd` : name;
+  }
+
+  private execNodeTool(name: 'corepack' | 'npm' | 'npx', args: string[], cwd: string, timeout: number): string {
+    const command = this.nodeTool(name, args);
+    return this.exec(command.command, command.args, cwd, timeout);
+  }
+
+  private nodeTool(name: 'corepack' | 'npm' | 'npx', args: string[]): RunnerCommand {
+    if (process.platform !== 'win32') {
+      return { command: name, args };
+    }
+
+    return {
+      command: process.execPath,
+      args: [this.nodeToolScript(name), ...args],
+    };
+  }
+
+  private nodeToolScript(name: 'corepack' | 'npm' | 'npx'): string {
+    const nodeRoot = path.dirname(process.execPath);
+    if (name === 'corepack') {
+      return path.join(nodeRoot, 'node_modules', 'corepack', 'dist', 'corepack.js');
+    }
+
+    return path.join(nodeRoot, 'node_modules', 'npm', 'bin', `${name}-cli.js`);
+  }
+
+  private pythonBin(): string {
+    return process.platform === 'win32' ? 'python' : 'python3';
+  }
+
+  private ensurePythonVirtualEnv(): void {
+    const venvPython = this.pythonExecutable();
+    if (fs.existsSync(venvPython)) return;
+
+    this.exec(this.pythonBin(), ['-m', 'venv', '.venv'], this.workDir, 600_000);
+  }
+
+  private pythonExecutable(): string {
+    return process.platform === 'win32'
+      ? path.join(this.workDir, '.venv', 'Scripts', 'python.exe')
+      : path.join(this.workDir, '.venv', 'bin', 'python');
+  }
+
+  private formatCommand(runner: RunnerCommand): string {
+    return [runner.command, ...runner.args].join(' ');
   }
 
   private readJson(file: string): any {
@@ -473,9 +541,9 @@ export class TestExecutor {
     logger.info(msg);
   }
 
-  private exec(cmd: string, cwd: string, timeout: number): string {
+  private exec(command: string, args: string[], cwd: string, timeout: number): string {
     try {
-      const out = execSync(cmd, { cwd, timeout, encoding: 'utf8', stdio: 'pipe' });
+      const out = execFileSync(command, args, { cwd, timeout, encoding: 'utf8', stdio: 'pipe' });
       if (out) this.logs.push(out);
       return out;
     } catch (err: any) {
@@ -490,16 +558,26 @@ export class TestExecutor {
 
   private execAsync(runner: RunnerCommand, cwd: string): Promise<CommandResult> {
     return new Promise((resolve, reject) => {
-      const proc = spawn(runner.command, [], {
+      const outputStream = runner.stdoutFile ? fs.createWriteStream(runner.stdoutFile) : null;
+      const proc = spawn(runner.command, runner.args, {
         cwd,
         env: { ...process.env, ...(this.data.environmentVariables || {}), ...(runner.env || {}) },
-        shell: true,
+        shell: false,
       });
 
-      proc.stdout.on('data', (data: Buffer) => this.log(data.toString().trim()));
+      proc.stdout.on('data', (data: Buffer) => {
+        if (outputStream) outputStream.write(data);
+        this.log(data.toString().trim());
+      });
       proc.stderr.on('data', (data: Buffer) => this.log(data.toString().trim()));
-      proc.on('close', (code) => resolve({ code }));
-      proc.on('error', reject);
+      proc.on('close', (code) => {
+        outputStream?.end();
+        resolve({ code });
+      });
+      proc.on('error', (err) => {
+        outputStream?.end();
+        reject(err);
+      });
     });
   }
 }

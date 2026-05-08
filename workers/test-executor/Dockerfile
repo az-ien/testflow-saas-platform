@@ -11,6 +11,7 @@ RUN apt-get update \
     openjdk-17-jdk-headless \
     maven \
     python3 \
+    python3-venv \
     python3-pip \
   && corepack enable \
   && rm -rf /var/lib/apt/lists/*
