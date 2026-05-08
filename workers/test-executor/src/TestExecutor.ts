@@ -6,23 +6,34 @@ import { logger } from './config/logger';
 import { TestResult } from './models/TestRun';
 import type { RunJobData } from './worker';
 
+type SupportedFramework = 'playwright' | 'cypress' | 'selenium' | 'pytest' | 'testng' | 'jest' | 'mocha';
+
+interface RunnerCommand {
+  command: string;
+  env?: Record<string, string>;
+}
+
+interface CommandResult {
+  code: number | null;
+}
+
 export class TestExecutor {
   private workDir: string;
+  private resultsDir: string;
   private logs: string[] = [];
   private data: RunJobData;
 
   constructor(data: RunJobData) {
     this.data = data;
     this.workDir = path.join(os.tmpdir(), `testflow-${data.runId}`);
+    this.resultsDir = path.join(this.workDir, 'test-results');
   }
 
-  // ─── Clone Repo ───────────────────────────────────────────────────────────
   async cloneRepo(): Promise<void> {
-    fs.mkdirSync(this.workDir, { recursive: true });
+    this.prepareWorkspace();
 
     let repoUrl = this.data.repoUrl;
 
-    // Inject access token into HTTPS URL for private repos
     if (this.data.repoAccessToken) {
       const url = new URL(repoUrl);
       url.username = 'oauth2';
@@ -34,205 +45,461 @@ export class TestExecutor {
     const cmd = `git clone --depth=1 --branch ${branch} "${repoUrl}" "${this.workDir}"`;
 
     this.log(`Cloning ${this.data.repoUrl} (branch: ${branch})...`);
-    this.exec(cmd, os.tmpdir());
-    this.log('✅ Repository cloned');
+    this.exec(cmd, os.tmpdir(), 600_000);
+    fs.mkdirSync(this.resultsDir, { recursive: true });
+    this.log('Repository cloned');
   }
 
-  // ─── Install Dependencies ─────────────────────────────────────────────────
   async installDependencies(): Promise<void> {
-    const hasPackageJson = fs.existsSync(path.join(this.workDir, 'package.json'));
-    const hasRequirements = fs.existsSync(path.join(this.workDir, 'requirements.txt'));
-    const hasPomXml = fs.existsSync(path.join(this.workDir, 'pom.xml'));
+    fs.mkdirSync(this.resultsDir, { recursive: true });
+
+    const hasPackageJson = this.exists('package.json');
+    const hasRequirements = this.exists('requirements.txt');
+    const hasPyproject = this.exists('pyproject.toml');
+    const hasPomXml = this.exists('pom.xml');
 
     if (hasPackageJson) {
-      this.log('Installing Node.js dependencies...');
-      this.exec('npm ci --prefer-offline', this.workDir);
-      // Install Playwright browsers if needed
-      if (this.data.framework === 'playwright') {
-        this.log('Installing Playwright browsers...');
-        this.exec('npx playwright install --with-deps chromium', this.workDir);
-      }
-    } else if (hasRequirements) {
-      this.log('Installing Python dependencies...');
-      this.exec('pip install -r requirements.txt -q', this.workDir);
-    } else if (hasPomXml) {
-      this.log('Resolving Maven dependencies...');
-      this.exec('mvn dependency:resolve -q', this.workDir);
+      this.installNodeDependencies();
     }
 
-    this.log('✅ Dependencies installed');
+    if (hasRequirements || hasPyproject || this.data.framework === 'pytest' || this.isPythonPlaywrightRepo()) {
+      this.installPythonDependencies(hasRequirements);
+    }
+
+    if (hasPomXml) {
+      this.log('Resolving Maven dependencies...');
+      this.exec('mvn -B dependency:resolve -q', this.workDir, 600_000);
+    }
+
+    if (!hasPackageJson && !hasRequirements && !hasPyproject && !hasPomXml) {
+      this.log('No dependency manifest found; running with tools available in the worker image');
+    }
+
+    this.log('Dependencies installed');
   }
 
-  // ─── Run Tests ────────────────────────────────────────────────────────────
   async runTests(): Promise<TestResult[]> {
     this.log(`Running ${this.data.framework} tests...`);
 
-    const command = this.buildCommand();
-    this.log(`Command: ${command}`);
+    const runner = this.buildCommand();
+    this.log(`Command: ${runner.command}`);
 
-    await this.execAsync(command, this.workDir);
-    return this.parseResults();
-  }
+    const result = await this.execAsync(runner, this.workDir);
+    const results = this.parseResults();
 
-  // ─── Build Framework Command ──────────────────────────────────────────────
-  private buildCommand(): string {
-    const pattern = this.data.testPattern || '';
-    const env = Object.entries(this.data.environmentVariables || {})
-      .map(([k, v]) => `${k}=${v}`)
-      .join(' ');
-    const envPrefix = env ? `${env} ` : '';
-
-    switch (this.data.framework) {
-      case 'playwright':
-        return `${envPrefix}npx playwright test ${pattern} --reporter=json --output-dir=test-results`;
-      case 'cypress':
-        return `${envPrefix}npx cypress run --spec "${pattern}" --reporter json`;
-      case 'jest':
-        return `${envPrefix}npx jest ${pattern} --json --outputFile=test-results/jest-results.json`;
-      case 'mocha':
-        return `${envPrefix}npx mocha ${pattern} --reporter json > test-results/mocha-results.json`;
-      case 'pytest':
-        return `${envPrefix}python -m pytest ${pattern} --json-report --json-report-file=test-results/pytest-results.json -v`;
-      case 'testng':
-        return `${envPrefix}mvn test -Dsurefire.reportFormat=brief`;
-      default:
-        throw new Error(`Unsupported framework: ${this.data.framework}`);
-    }
-  }
-
-  // ─── Parse Results ────────────────────────────────────────────────────────
-  private parseResults(): TestResult[] {
-    const resultsDir = path.join(this.workDir, 'test-results');
-    if (!fs.existsSync(resultsDir)) {
-      this.log('⚠️ No test-results directory found');
-      return [];
+    if (results.length === 0 && result.code !== 0) {
+      throw new Error(`Test runner exited with code ${result.code} and produced no parseable results`);
     }
 
-    switch (this.data.framework) {
-      case 'playwright': return this.parsePlaywrightResults(resultsDir);
-      case 'jest':       return this.parseJestResults(resultsDir);
-      case 'pytest':     return this.parsePytestResults(resultsDir);
-      default:           return this.parseJUnitXml(resultsDir);
+    if (results.length === 0) {
+      this.log('No parseable test results were produced');
     }
-  }
 
-  private parsePlaywrightResults(dir: string): TestResult[] {
-    const jsonFile = path.join(dir, 'results.json');
-    if (!fs.existsSync(jsonFile)) return [];
-
-    const raw = JSON.parse(fs.readFileSync(jsonFile, 'utf8'));
-    const results: TestResult[] = [];
-
-    for (const suite of raw.suites || []) {
-      for (const spec of suite.specs || []) {
-        for (const test of spec.tests || []) {
-          const result = test.results?.[0] || {};
-          results.push({
-            title: `${suite.title} > ${spec.title}`,
-            status: result.status === 'passed' ? 'passed' : result.status === 'skipped' ? 'skipped' : 'failed',
-            duration: result.duration || 0,
-            error: result.error?.message,
-            retries: (test.results?.length || 1) - 1,
-            screenshot: result.attachments?.find((a: any) => a.name === 'screenshot')?.path,
-          });
-        }
-      }
-    }
     return results;
   }
 
-  private parseJestResults(dir: string): TestResult[] {
-    const jsonFile = path.join(dir, 'jest-results.json');
-    if (!fs.existsSync(jsonFile)) return [];
-    const raw = JSON.parse(fs.readFileSync(jsonFile, 'utf8'));
-    const results: TestResult[] = [];
-    for (const suite of raw.testResults || []) {
-      for (const test of suite.testResults || []) {
-        results.push({
-          title: test.fullName,
-          status: test.status as any,
-          duration: test.duration || 0,
-          error: test.failureMessages?.[0],
-          retries: 0,
-        });
-      }
-    }
-    return results;
-  }
-
-  private parsePytestResults(dir: string): TestResult[] {
-    const jsonFile = path.join(dir, 'pytest-results.json');
-    if (!fs.existsSync(jsonFile)) return [];
-    const raw = JSON.parse(fs.readFileSync(jsonFile, 'utf8'));
-    return (raw.tests || []).map((t: any) => ({
-      title: t.nodeid,
-      status: t.outcome === 'passed' ? 'passed' : t.outcome === 'skipped' ? 'skipped' : 'failed',
-      duration: Math.round((t.duration || 0) * 1000),
-      error: t.call?.longrepr,
-      retries: 0,
-    }));
-  }
-
-  private parseJUnitXml(_dir: string): TestResult[] {
-    // Simplified JUnit XML parse for TestNG/Selenium
-    return [];
-  }
-
-  // ─── Upload Report (stub — implement S3 upload) ───────────────────────────
   async uploadReport(): Promise<string | null> {
-    const reportDir = path.join(this.workDir, 'playwright-report');
-    if (fs.existsSync(reportDir)) {
-      this.log('Uploading HTML report to S3...');
-      // TODO: aws s3 sync reportDir to S3 bucket
-      // return `https://${process.env.S3_BUCKET}.s3.amazonaws.com/reports/${this.data.runId}/index.html`;
+    const reportDirs = [
+      path.join(this.workDir, 'playwright-report'),
+      path.join(this.workDir, 'cypress', 'reports'),
+      path.join(this.workDir, 'htmlcov'),
+      path.join(this.workDir, 'target', 'surefire-reports'),
+    ];
+
+    const reportDir = reportDirs.find((dir) => fs.existsSync(dir));
+    if (reportDir) {
+      this.log(`Report artifacts available at ${path.relative(this.workDir, reportDir)}`);
+      // TODO: upload reportDir to S3 and return the public/signed report URL.
     }
+
     return null;
   }
 
-  // ─── Helpers ──────────────────────────────────────────────────────────────
-  getLogs(): string[] { return this.logs; }
-
-  private log(msg: string) {
-    const line = `[${new Date().toISOString()}] ${msg}`;
-    this.logs.push(line);
-    logger.info(msg);
-  }
-
-  private exec(cmd: string, cwd: string): string {
-    try {
-      const out = execSync(cmd, { cwd, timeout: 300_000, encoding: 'utf8', stdio: 'pipe' });
-      if (out) this.logs.push(out);
-      return out;
-    } catch (err: any) {
-      this.log(`Error: ${err.message}`);
-      throw err;
-    }
-  }
-
-  private execAsync(cmd: string, cwd: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      const [bin, ...args] = cmd.split(' ');
-      const proc = spawn(bin, args, { cwd, env: { ...process.env }, shell: true });
-      proc.stdout.on('data', (d) => this.log(d.toString().trim()));
-      proc.stderr.on('data', (d) => this.log(d.toString().trim()));
-      proc.on('close', (code) => {
-        if (code !== 0 && code !== null) {
-          // Non-zero exit from test runner = test failures, not an error
-          resolve();
-        } else {
-          resolve();
-        }
-      });
-      proc.on('error', reject);
-    });
+  getLogs(): string[] {
+    return this.logs;
   }
 
   async cleanup(): Promise<void> {
     try {
       fs.rmSync(this.workDir, { recursive: true, force: true });
-      this.log('🧹 Workspace cleaned up');
+      this.log('Workspace cleaned up');
     } catch {
       // ignore cleanup errors
     }
+  }
+
+  private prepareWorkspace(): void {
+    fs.rmSync(this.workDir, { recursive: true, force: true });
+    fs.mkdirSync(this.workDir, { recursive: true });
+  }
+
+  private installNodeDependencies(): void {
+    this.log('Installing Node.js dependencies...');
+
+    if (this.exists('pnpm-lock.yaml')) {
+      this.exec('corepack pnpm install --frozen-lockfile', this.workDir, 600_000);
+    } else if (this.exists('yarn.lock')) {
+      this.exec('corepack yarn install --frozen-lockfile', this.workDir, 600_000);
+    } else if (this.exists('package-lock.json')) {
+      this.exec('npm ci', this.workDir, 600_000);
+    } else {
+      this.exec('npm install', this.workDir, 600_000);
+    }
+
+    if (this.data.framework === 'playwright') {
+      this.log('Ensuring Playwright Chromium browser is installed...');
+      this.exec('npx playwright install chromium', this.workDir, 600_000);
+    }
+  }
+
+  private installPythonDependencies(hasRequirements: boolean): void {
+    this.log('Installing Python dependencies...');
+
+    if (hasRequirements) {
+      this.exec('python3 -m pip install -r requirements.txt -q', this.workDir, 600_000);
+    }
+
+    if (this.data.framework === 'pytest' || this.data.framework === 'selenium') {
+      this.exec('python3 -m pip install pytest pytest-json-report -q', this.workDir, 600_000);
+    }
+
+    if (this.isPythonPlaywrightRepo()) {
+      this.exec('python3 -m pip install pytest pytest-json-report pytest-playwright playwright -q', this.workDir, 600_000);
+      this.exec('python3 -m playwright install chromium', this.workDir, 600_000);
+    }
+  }
+
+  private buildCommand(): RunnerCommand {
+    const framework = this.data.framework as SupportedFramework;
+    const pattern = this.data.testPattern?.trim();
+
+    switch (framework) {
+      case 'playwright':
+        if (this.isPythonPlaywrightRepo()) {
+          return {
+            command: `python3 -m pytest${this.arg(pattern)} --json-report --json-report-file=test-results/pytest-results.json -v`,
+          };
+        }
+
+        return {
+          command: `npx playwright test${this.arg(pattern)} --reporter=json`,
+          env: { PLAYWRIGHT_JSON_OUTPUT_NAME: path.join(this.resultsDir, 'playwright-results.json') },
+        };
+      case 'cypress':
+        return {
+          command: `npx cypress run${pattern ? ` --spec "${pattern}"` : ''} --reporter junit --reporter-options "mochaFile=test-results/cypress-[hash].xml,toConsole=false"`,
+        };
+      case 'jest':
+        return {
+          command: `npx jest${this.arg(pattern)} --json --outputFile=test-results/jest-results.json --testLocationInResults`,
+        };
+      case 'mocha':
+        return {
+          command: `npx mocha${this.arg(pattern)} --reporter json > test-results/mocha-results.json`,
+        };
+      case 'pytest':
+        return {
+          command: `python3 -m pytest${this.arg(pattern)} --json-report --json-report-file=test-results/pytest-results.json -v`,
+        };
+      case 'testng':
+        return { command: 'mvn -B test -Dsurefire.useFile=true' };
+      case 'selenium':
+        return this.buildSeleniumCommand(pattern);
+      default:
+        throw new Error(`Unsupported framework: ${this.data.framework}`);
+    }
+  }
+
+  private buildSeleniumCommand(pattern?: string): RunnerCommand {
+    if (this.exists('pom.xml')) {
+      return { command: 'mvn -B test -Dsurefire.useFile=true' };
+    }
+
+    if (this.exists('package.json')) {
+      return { command: 'npm test' };
+    }
+
+    return {
+      command: `python3 -m pytest${this.arg(pattern)} --json-report --json-report-file=test-results/pytest-results.json -v`,
+    };
+  }
+
+  private parseResults(): TestResult[] {
+    switch (this.data.framework as SupportedFramework) {
+      case 'playwright':
+        return this.isPythonPlaywrightRepo() ? this.parsePytestResults() : this.parsePlaywrightResults();
+      case 'jest':
+        return this.parseJestResults();
+      case 'mocha':
+        return this.parseMochaResults();
+      case 'pytest':
+        return this.parsePytestResults();
+      case 'cypress':
+      case 'testng':
+        return this.parseJUnitXml(this.findJUnitFiles());
+      case 'selenium':
+        return this.parseSeleniumResults();
+      default:
+        return [];
+    }
+  }
+
+  private parsePlaywrightResults(): TestResult[] {
+    const jsonFile = path.join(this.resultsDir, 'playwright-results.json');
+    if (!fs.existsSync(jsonFile)) return [];
+
+    const raw = this.readJson(jsonFile);
+    const results: TestResult[] = [];
+    this.collectPlaywrightSuites(raw.suites || [], [], results);
+    return results;
+  }
+
+  private collectPlaywrightSuites(suites: any[], parents: string[], results: TestResult[]): void {
+    for (const suite of suites) {
+      const suitePath = [...parents, suite.title].filter(Boolean);
+
+      for (const spec of suite.specs || []) {
+        for (const test of spec.tests || []) {
+          const attempts = test.results || [];
+          const last = attempts[attempts.length - 1] || {};
+          results.push({
+            title: [...suitePath, spec.title].join(' > '),
+            status: this.normalizeStatus(last.status),
+            duration: Number(last.duration || 0),
+            error: last.error?.message,
+            retries: Math.max(attempts.length - 1, 0),
+            screenshot: last.attachments?.find((a: any) => a.name === 'screenshot')?.path,
+          });
+        }
+      }
+
+      this.collectPlaywrightSuites(suite.suites || [], suitePath, results);
+    }
+  }
+
+  private parseJestResults(): TestResult[] {
+    const jsonFile = path.join(this.resultsDir, 'jest-results.json');
+    if (!fs.existsSync(jsonFile)) return [];
+
+    const raw = this.readJson(jsonFile);
+    const results: TestResult[] = [];
+
+    for (const suite of raw.testResults || []) {
+      for (const test of suite.testResults || []) {
+        results.push({
+          title: test.fullName || test.title,
+          status: this.normalizeStatus(test.status),
+          duration: Number(test.duration || 0),
+          error: test.failureMessages?.[0],
+          retries: 0,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  private parseMochaResults(): TestResult[] {
+    const jsonFile = path.join(this.resultsDir, 'mocha-results.json');
+    if (!fs.existsSync(jsonFile)) return [];
+
+    const raw = this.readJson(jsonFile);
+    const tests = [...(raw.passes || []), ...(raw.failures || []), ...(raw.pending || [])];
+
+    return tests.map((test: any) => ({
+      title: test.fullTitle || test.title,
+      status: test.err && Object.keys(test.err).length > 0
+        ? 'failed'
+        : test.pending
+          ? 'skipped'
+          : 'passed',
+      duration: Number(test.duration || 0),
+      error: test.err?.message,
+      retries: 0,
+    }));
+  }
+
+  private parsePytestResults(): TestResult[] {
+    const jsonFile = path.join(this.resultsDir, 'pytest-results.json');
+    if (!fs.existsSync(jsonFile)) return [];
+
+    const raw = this.readJson(jsonFile);
+    return (raw.tests || []).map((test: any) => ({
+      title: test.nodeid,
+      status: this.normalizeStatus(test.outcome),
+      duration: Math.round(Number(test.duration || 0) * 1000),
+      error: test.call?.longrepr || test.setup?.longrepr || test.teardown?.longrepr,
+      retries: 0,
+    }));
+  }
+
+  private parseSeleniumResults(): TestResult[] {
+    const pytestResults = this.parsePytestResults();
+    if (pytestResults.length > 0) return pytestResults;
+    return this.parseJUnitXml(this.findJUnitFiles());
+  }
+
+  private parseJUnitXml(files: string[]): TestResult[] {
+    const results: TestResult[] = [];
+
+    for (const file of files) {
+      const xml = fs.readFileSync(file, 'utf8');
+      const cases = xml.match(/<testcase\b[\s\S]*?<\/testcase>|<testcase\b[^/]*\/>/g) || [];
+
+      for (const testcase of cases) {
+        const openingTag = testcase.match(/<testcase\b[^>]*>/)?.[0] || '';
+        const attrs = this.parseXmlAttributes(openingTag);
+        const failure = testcase.match(/<(failure|error)\b[^>]*>([\s\S]*?)<\/\1>/);
+        const skipped = /<skipped\b/.test(testcase);
+        const className = attrs.classname ? `${attrs.classname}.` : '';
+
+        results.push({
+          title: `${className}${attrs.name || 'unnamed test'}`,
+          status: failure ? 'failed' : skipped ? 'skipped' : 'passed',
+          duration: Math.round(Number(attrs.time || 0) * 1000),
+          error: failure ? this.stripXml(failure[2]) : undefined,
+          retries: 0,
+        });
+      }
+    }
+
+    return results;
+  }
+
+  private findJUnitFiles(): string[] {
+    const candidates = [
+      this.resultsDir,
+      path.join(this.workDir, 'target', 'surefire-reports'),
+      path.join(this.workDir, 'target', 'failsafe-reports'),
+    ];
+
+    const files = new Set<string>();
+    for (const dir of candidates) {
+      for (const file of this.findFiles(dir, /\.xml$/)) {
+        files.add(file);
+      }
+    }
+
+    return [...files];
+  }
+
+  private findFiles(dir: string, pattern: RegExp): string[] {
+    if (!fs.existsSync(dir)) return [];
+
+    const files: string[] = [];
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const fullPath = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        files.push(...this.findFiles(fullPath, pattern));
+      } else if (pattern.test(entry.name)) {
+        files.push(fullPath);
+      }
+    }
+
+    return files;
+  }
+
+  private parseXmlAttributes(tag: string): Record<string, string> {
+    const attrs: Record<string, string> = {};
+    const attrPattern = /(\w+)="([^"]*)"/g;
+    let match: RegExpExecArray | null;
+
+    while ((match = attrPattern.exec(tag)) !== null) {
+      attrs[match[1]] = this.decodeXml(match[2]);
+    }
+
+    return attrs;
+  }
+
+  private stripXml(value: string): string {
+    return this.decodeXml(value.replace(/<[^>]+>/g, '').trim());
+  }
+
+  private decodeXml(value: string): string {
+    return value
+      .replace(/&quot;/g, '"')
+      .replace(/&apos;/g, "'")
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&amp;/g, '&');
+  }
+
+  private normalizeStatus(status: string): TestResult['status'] {
+    switch (status) {
+      case 'passed':
+      case 'ok':
+        return 'passed';
+      case 'skipped':
+      case 'pending':
+      case 'disabled':
+        return 'skipped';
+      case 'timedOut':
+      case 'timedout':
+      case 'timeout':
+        return 'timedOut';
+      default:
+        return 'failed';
+    }
+  }
+
+  private exists(relativePath: string): boolean {
+    return fs.existsSync(path.join(this.workDir, relativePath));
+  }
+
+  private isPythonPlaywrightRepo(): boolean {
+    if (this.data.framework !== 'playwright') return false;
+    if (this.exists('package.json')) return false;
+
+    return this.exists('requirements.txt')
+      || this.exists('pyproject.toml')
+      || this.findFiles(this.workDir, /\.py$/).length > 0;
+  }
+
+  private arg(value?: string): string {
+    return value ? ` ${value}` : '';
+  }
+
+  private readJson(file: string): any {
+    try {
+      return JSON.parse(fs.readFileSync(file, 'utf8'));
+    } catch (err: any) {
+      throw new Error(`Unable to parse ${path.relative(this.workDir, file)}: ${err.message}`);
+    }
+  }
+
+  private log(msg: string): void {
+    const line = `[${new Date().toISOString()}] ${msg}`;
+    this.logs.push(line);
+    logger.info(msg);
+  }
+
+  private exec(cmd: string, cwd: string, timeout: number): string {
+    try {
+      const out = execSync(cmd, { cwd, timeout, encoding: 'utf8', stdio: 'pipe' });
+      if (out) this.logs.push(out);
+      return out;
+    } catch (err: any) {
+      const stdout = err.stdout?.toString().trim();
+      const stderr = err.stderr?.toString().trim();
+      if (stdout) this.logs.push(stdout);
+      if (stderr) this.logs.push(stderr);
+      this.log(`Command failed: ${err.message}`);
+      throw err;
+    }
+  }
+
+  private execAsync(runner: RunnerCommand, cwd: string): Promise<CommandResult> {
+    return new Promise((resolve, reject) => {
+      const proc = spawn(runner.command, [], {
+        cwd,
+        env: { ...process.env, ...(this.data.environmentVariables || {}), ...(runner.env || {}) },
+        shell: true,
+      });
+
+      proc.stdout.on('data', (data: Buffer) => this.log(data.toString().trim()));
+      proc.stderr.on('data', (data: Buffer) => this.log(data.toString().trim()));
+      proc.on('close', (code) => resolve({ code }));
+      proc.on('error', reject);
+    });
   }
 }

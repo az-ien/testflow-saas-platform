@@ -2,6 +2,19 @@ FROM mcr.microsoft.com/playwright:v1.40.0-jammy
 
 WORKDIR /app
 
+USER root
+
+# Runtime tools for public test repositories that use pytest, TestNG, or Maven/Selenium.
+RUN apt-get update \
+  && apt-get install -y --no-install-recommends \
+    git \
+    openjdk-17-jdk-headless \
+    maven \
+    python3 \
+    python3-pip \
+  && corepack enable \
+  && rm -rf /var/lib/apt/lists/*
+
 # Install Node deps
 COPY workers/test-executor/package*.json ./
 RUN npm ci

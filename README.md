@@ -1,6 +1,6 @@
 # TestFlow — Test Execution SaaS Platform
 
-> Run Playwright, Cypress, Selenium, pytest, and TestNG tests from **any repo** via a single API call. View results in a live dashboard.
+> Run Playwright, Cypress, Selenium, pytest, TestNG, Jest, and Mocha tests from public or private external repositories via a single API call. View results in a live dashboard.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-green)
@@ -11,7 +11,7 @@
 ## ✨ Features
 
 - **Multi-Framework Support** — Playwright, Cypress, Jest, Mocha, pytest, TestNG, Selenium
-- **Any Repo, Any Language** — Connect GitHub, GitLab, Bitbucket, or Azure DevOps repos
+- **External Test Repos** — Connect GitHub, GitLab, Bitbucket, or Azure DevOps repos; TestFlow does not require tests to live in this app
 - **API-First** — Trigger test runs via REST API with a single `X-API-Key` header
 - **Live Dashboard** — Real-time pass/fail charts, execution logs, and trend analytics
 - **Webhook Notifications** — Receive signed callbacks when runs complete
@@ -153,17 +153,31 @@ curl http://localhost:5000/api/runs/{runId} \
 
 ---
 
-## 🧪 Supported Frameworks
+## 🧪 External Test Execution
 
-| Framework   | Language   | Test Command                                    |
-|-------------|------------|-------------------------------------------------|
-| Playwright  | JS/TS      | `npx playwright test --reporter=json`           |
-| Cypress     | JS/TS      | `npx cypress run --reporter json`               |
-| Jest        | JS/TS      | `npx jest --json`                               |
-| Mocha       | JS/TS      | `npx mocha --reporter json`                     |
-| pytest      | Python     | `python -m pytest --json-report`                |
-| TestNG      | Java       | `mvn test`                                      |
-| Selenium    | Multi      | `mvn test` / `pytest`                           |
+TestFlow is an orchestration service. It does not keep its own product test suite inside this repository. Each project points to an external repository, and each run clones that repository into an isolated temporary worker directory, installs dependencies from the repo manifest, runs the configured framework, parses machine-readable results, then removes the workspace.
+
+Supported dependency manifests:
+
+| Ecosystem | Supported manifests |
+|-----------|---------------------|
+| Node.js   | `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, or `package.json` |
+| Python    | `requirements.txt` and `pyproject.toml` repositories; pytest runs also install `pytest-json-report` |
+| Java      | `pom.xml` via Maven |
+
+Supported frameworks:
+
+| Framework  | Language | Worker command | Parsed report |
+|------------|----------|----------------|---------------|
+| Playwright | JS/TS or Python | JS/TS: `npx playwright test <testPattern> --reporter=json`; Python: `python3 -m pytest <testPattern> --json-report` | JS/TS: `test-results/playwright-results.json`; Python: `test-results/pytest-results.json` |
+| Cypress    | JS/TS    | `npx cypress run --spec <testPattern> --reporter junit` | `test-results/cypress-*.xml` |
+| Jest       | JS/TS    | `npx jest <testPattern> --json --outputFile=test-results/jest-results.json` | `test-results/jest-results.json` |
+| Mocha      | JS/TS    | `npx mocha <testPattern> --reporter json` | `test-results/mocha-results.json` |
+| pytest     | Python   | `python3 -m pytest <testPattern> --json-report` | `test-results/pytest-results.json` |
+| TestNG     | Java     | `mvn -B test -Dsurefire.useFile=true` | `target/surefire-reports/*.xml` |
+| Selenium   | Multi    | Maven, `npm test`, or pytest depending on the repo manifest | JUnit XML or pytest JSON |
+
+`testPattern` is optional. If omitted, the framework's native discovery behavior is used. For public repositories, leave `repoAccessToken` empty. Private repositories can provide `repoAccessToken`, which the worker injects into the clone URL for that run.
 
 ---
 
@@ -188,7 +202,7 @@ curl http://localhost:5000/api/runs/{runId} \
 | Auth           | JWT + API Key dual auth, bcrypt                 |
 | Database       | PostgreSQL 15, Sequelize ORM                    |
 | Cache & Queue  | Redis 7, BullMQ                                 |
-| Test Workers   | Playwright (Chromium), Docker containers        |
+| Test Workers   | Docker workers with Node.js, Playwright Chromium, Python/pytest, Java 17, and Maven |
 | Billing        | Stripe (Checkout + Billing Portal)              |
 | Monitoring     | Sentry, Winston logging with rotation           |
 | Infrastructure | Terraform (AWS VPC, RDS, S3)                    |
