@@ -3,17 +3,14 @@ FROM mcr.microsoft.com/playwright:v1.40.0-jammy
 WORKDIR /app
 
 # Install Node deps
-COPY package*.json ./
+COPY workers/test-executor/package*.json ./
 RUN npm ci
 
-# Copy source and build
-COPY tsconfig.json ./
-COPY src ./src
+# Copy worker source
+COPY workers/test-executor/tsconfig.json ./
+COPY workers/test-executor/src ./src
 
-# Share models from backend (symlinked or copied)
-COPY ../backend/src/models ./src/models
-COPY ../backend/src/config ./src/config
-
+# Build
 RUN npx tsc
 
 # Non-root user
