@@ -15,11 +15,35 @@
 - **API-First** — Trigger test runs via REST API with a single `X-API-Key` header
 - **Live Dashboard** — Real-time pass/fail charts, execution logs, and trend analytics
 - **Webhook Notifications** — Receive signed callbacks when runs complete
-- **GitHub/GitLab Triggers** — Auto-run tests on push or pull request events
+- **GitHub Webhook Triggers** — Auto-run tests on GitHub push or pull request events
 - **Stripe Billing** — Subscription tiers with usage-based limits
 - **Scalable Workers** — BullMQ job queue with configurable parallelism
-- **S3 Artifacts** — Screenshots, videos, and HTML reports stored in the cloud
-- **Terraform IaC** — One-command AWS deployment (VPC, RDS, S3)
+- **Artifact Detection** — Workers detect framework reports and expose run logs/results
+- **Terraform IaC Foundation** — AWS VPC, RDS PostgreSQL, and S3 bucket provisioning
+
+---
+
+## Implementation Status
+
+### Implemented
+
+- Docker Compose local stack for frontend, backend, PostgreSQL, Redis, worker, and optional debug tools
+- JWT and API key authentication
+- Project and test-run APIs
+- BullMQ-backed worker execution for Playwright, Cypress, Jest, Mocha, pytest, TestNG, and Selenium-style projects
+- GitHub inbound webhook route for push and pull request events
+- Outbound signed run webhooks
+- Stripe checkout, billing portal, and subscription routes
+- Terraform foundation for AWS VPC, RDS PostgreSQL, S3 artifact bucket, and security groups
+
+### Planned or Partially Implemented
+
+- S3 artifact uploads: report directories are detected by the worker, but uploading to S3 and returning report URLs is still pending.
+- GitLab, Bitbucket, and Azure DevOps inbound trigger routes: these providers are accepted as project metadata, but only GitHub webhook triggers are currently implemented.
+- Production migrations: development uses Sequelize sync, but production migration files are not included yet.
+- Terraform Redis/compute deployment: Redis/ElastiCache, ECS/EKS, load balancers, and service deployment are not provisioned by the current Terraform module.
+- Python `pyproject.toml` dependency installation: the worker detects Python repositories, but full `pyproject.toml` package-manager support still needs to be wired in.
+- Stripe webhook hardening: production deployments should add raw-body handling for Stripe signature verification.
 
 ---
 
@@ -37,7 +61,7 @@
                      │  Port 5432  │          │  Clone repo  │
                      └─────────────┘          │  Run tests   │
                                               │  Parse JSON  │
-                                              │  Upload S3   │
+                                              │  Reports TBD │
                                               └──────────────┘
 ```
 
@@ -162,7 +186,7 @@ Supported dependency manifests:
 | Ecosystem | Supported manifests |
 |-----------|---------------------|
 | Node.js   | `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, or `package.json` |
-| Python    | `requirements.txt` and `pyproject.toml` repositories; pytest runs also install `pytest-json-report` |
+| Python    | `requirements.txt` repositories; `pyproject.toml` detection exists, but full dependency installation support is planned |
 | Java      | `pom.xml` via Maven |
 
 Supported frameworks:
@@ -282,7 +306,7 @@ This creates: VPC, 2 public + 2 private subnets, RDS PostgreSQL 15, S3 bucket, s
 
 ### Deploy Services
 
-Deploy the backend, frontend, and workers to ECS, EKS, or any Docker-compatible host. Point the environment variables to the Terraform outputs (RDS endpoint, S3 bucket name).
+Deploy the backend, frontend, workers, and Redis to ECS, EKS, or any Docker-compatible host. Point the environment variables to the Terraform outputs (RDS endpoint, S3 bucket name). The current Terraform module provisions the AWS foundation only; service orchestration is still a separate deployment step.
 
 ---
 
