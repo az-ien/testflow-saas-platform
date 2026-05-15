@@ -128,6 +128,29 @@
 - **UUIDs** for all primary keys
 - **Development** uses `sequelize.sync()` — production must use migration files (not yet created)
 
+### 3.5 External Test Execution Model
+
+TestFlow is an **orchestration service** — it does not keep its own test suite. Each project points to an external repository. Each run:
+1. Clones that repository into an isolated temporary worker directory
+2. Installs dependencies from the repo manifest
+3. Runs the configured framework
+4. Parses machine-readable results
+5. Removes the workspace
+
+#### Supported Dependency Manifests
+
+| Ecosystem | Supported Manifests |
+|-----------|---------------------|
+| Node.js | `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, or `package.json` |
+| Python | `requirements.txt` repositories; `pyproject.toml` detection exists but full install support is planned |
+| Java | `pom.xml` via Maven |
+
+#### Key API Fields
+
+- **`testPattern`** — optional glob passed to the framework runner. If omitted, the framework's native test discovery is used.
+- **`repoAccessToken`** — optional. For private repos, the worker injects this into the clone URL. For public repos, leave empty.
+- **`repoProvider`** — `github`, `gitlab`, `bitbucket`, or `azure-devops`. Only GitHub webhook triggers are currently implemented; the others are accepted as metadata.
+
 ---
 
 ## 4. File & Folder Conventions
@@ -231,6 +254,15 @@ testflow-saas-platform/
 - Outbound webhooks signed with `HMAC-SHA256`
 - Verify via `X-TestFlow-Signature` header
 
+### Webhook Events
+
+| Event | When |
+|-------|------|
+| `run.started` | Worker picks up the job |
+| `run.status` | Status changes (cloning → installing → running) |
+| `run.completed` | Tests finished (passed/failed) |
+| `run.error` | Unrecoverable error |
+
 ### Secrets Management
 
 - All secrets in `.env` (gitignored)
@@ -280,7 +312,8 @@ testflow-saas-platform/
 | Production migration files | HIGH | Currently using `sequelize.sync()`; need proper migration files |
 | Terraform Redis/ElastiCache | MEDIUM | Redis not provisioned in cloud |
 | Terraform ECS/EKS deployment | MEDIUM | No compute provisioning |
-| Email verification flow | LOW | Feature flag exists but not implemented |
+| Email verification flow | LOW | Feature flag exists (`FEATURE_EMAIL_VERIFICATION`) but not implemented |
+| SendGrid email integration | LOW | `.env.example` has `SENDGRID_API_KEY`; no email sending code exists yet |
 | Test suite for backend | HIGH | Jest configured but no tests written |
 | Test suite for frontend | MEDIUM | No testing framework configured |
 | CI/CD pipeline | HIGH | No GitHub Actions / workflow files |
@@ -297,6 +330,7 @@ testflow-saas-platform/
 | Date | Agent | Files Changed | Summary |
 |------|-------|---------------|---------|
 | 2026-05-15 | Initial | `SKILLS.md` | Created SKILLS.md with full project standards and implementation tracker |
+| 2026-05-15 | Antigravity | `SKILLS.md`, `README.md` | Aligned both files: added orchestration model, dependency manifests, worker commands, webhook events, git conventions, and SendGrid to SKILLS; fixed bcryptjs, added SKILLS.md to project tree, and added AI agent note in README |
 
 ---
 
@@ -326,6 +360,12 @@ testflow-saas-platform/
 14. **Update §2 Tech Stack** if you added a new dependency
 15. **Verify README.md** — if your change affects the public API, architecture, or setup instructions, update the README too
 
+### Git Commit Conventions
+
+- Branch naming: `feature/<name>`, `fix/<name>`, `chore/<name>`
+- Commit messages: `feat: ...`, `fix: ...`, `chore: ...`, `docs: ...` (conventional commits)
+- Always create a feature branch — never commit directly to `main`
+
 ### Pricing Tiers (for reference when implementing billing logic)
 
 | Plan | Price | Runs/month | Parallel Runners |
@@ -338,15 +378,16 @@ testflow-saas-platform/
 
 ### Supported Test Frameworks (for reference when modifying the worker)
 
-| Framework | Language | Report Format |
-|-----------|----------|--------------|
-| Playwright | JS/TS or Python | JSON (`playwright-results.json`) or pytest JSON |
-| Cypress | JS/TS | JUnit XML (`cypress-*.xml`) |
-| Jest | JS/TS | JSON (`jest-results.json`) |
-| Mocha | JS/TS | JSON via stdout (`mocha-results.json`) |
-| pytest | Python | JSON (`pytest-results.json`) |
-| TestNG | Java | Surefire XML (`target/surefire-reports/*.xml`) |
-| Selenium | Multi | JUnit XML or pytest JSON depending on manifest |
+| Framework | Language | Worker Command | Report Format |
+|-----------|----------|----------------|---------------|
+| Playwright | JS/TS | `npx playwright test <testPattern> --reporter=json` | JSON (`playwright-results.json`) |
+| Playwright | Python | `python3 -m pytest <testPattern> --json-report` | JSON (`pytest-results.json`) |
+| Cypress | JS/TS | `npx cypress run --spec <testPattern> --reporter junit` | JUnit XML (`cypress-*.xml`) |
+| Jest | JS/TS | `npx jest <testPattern> --json --outputFile=test-results/jest-results.json` | JSON (`jest-results.json`) |
+| Mocha | JS/TS | `npx mocha <testPattern> --reporter json` | JSON via stdout (`mocha-results.json`) |
+| pytest | Python | `python3 -m pytest <testPattern> --json-report` | JSON (`pytest-results.json`) |
+| TestNG | Java | `mvn -B test -Dsurefire.useFile=true` | Surefire XML (`target/surefire-reports/*.xml`) |
+| Selenium | Multi | Maven, `npm test`, or pytest depending on manifest | JUnit XML or pytest JSON |
 
 ---
 

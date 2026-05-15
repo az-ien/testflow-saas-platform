@@ -223,7 +223,7 @@ Supported frameworks:
 |----------------|-------------------------------------------------|
 | Frontend       | React 18, Vite, Tailwind CSS, Redux Toolkit, Recharts |
 | Backend API    | Node.js, Express, TypeScript                    |
-| Auth           | JWT + API Key dual auth, bcrypt                 |
+| Auth           | JWT + API Key dual auth, bcryptjs                |
 | Database       | PostgreSQL 15, Sequelize ORM                    |
 | Cache & Queue  | Redis 7, BullMQ                                 |
 | Test Workers   | Docker workers with Node.js, Playwright Chromium, Python/pytest, Java 17, and Maven |
@@ -268,6 +268,7 @@ testflow-saas-platform/
 ├── terraform/                  # AWS infrastructure
 │   ├── main.tf
 │   └── variables.tf
+├── SKILLS.md                   # AI agent standards & implementation tracker
 ├── .env.example                # All configuration variables
 ├── .gitignore
 ├── docker-compose.yml          # Full local stack
@@ -311,6 +312,8 @@ Deploy the backend, frontend, workers, and Redis to ECS, EKS, or any Docker-comp
 ---
 
 ## 🤝 Contributing
+
+> **AI Agents:** Before making any changes, read `SKILLS.md` in the project root. After making changes, update its Implementation Tracker (§6) and Change Log (§7).
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feature/my-feature`
