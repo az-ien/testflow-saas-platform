@@ -4,8 +4,8 @@
 >
 > Every AI agent (Cursor, Copilot, Gemini, Claude, etc.) **MUST** read this file before making any code change. After completing work, the agent **MUST** update the relevant sections (especially §6 Implementation Tracker and §7 Change Log) to keep this document in sync with reality.
 >
-> **Last Updated:** 2026-05-15
-> **Updated By:** Initial creation
+> **Last Updated:** 2026-08-31
+> **Updated By:** Codex
 
 ---
 
@@ -126,7 +126,7 @@
   - User → TestRuns (one-to-many)
   - Project → TestRuns (one-to-many)
 - **UUIDs** for all primary keys
-- **Development** uses `sequelize.sync()` — production must use migration files (not yet created)
+- **Development** uses `sequelize.sync()` — production must use migration files from `backend/migrations/`
 
 ### 3.5 External Test Execution Model
 
@@ -172,6 +172,9 @@ testflow-saas-platform/
 │   │   ├── models/             ← User, Project, TestRun, Subscription, index.ts
 │   │   ├── routes/             ← auth, projects, runs, webhooks, subscriptions
 │   │   └── services/           ← AuthService.ts, RunQueue.ts
+│   ├── .sequelizerc            ← Sequelize CLI paths
+│   ├── config/                 ← Sequelize CLI config
+│   ├── migrations/             ← Production database migrations
 │   ├── Dockerfile
 │   └── package.json
 │
@@ -288,7 +291,9 @@ testflow-saas-platform/
 | GitHub webhook triggers | `backend/src/routes/webhooks.ts` | Push + PR events |
 | Outbound signed webhooks | `WebhookNotifier.ts` | HMAC-SHA256 signed |
 | Stripe billing routes | `backend/src/routes/subscriptions.ts` | Checkout, portal, subscription |
+| Stripe webhook hardening | `backend/src/app.ts`, `backend/src/routes/subscriptions.ts` | Raw-body signature verification, subscription metadata, update/delete events |
 | Subscription model | `backend/src/models/Subscription.ts` | Tiers: free, starter, pro, business, enterprise |
+| Production migration files | `backend/.sequelizerc`, `backend/config/config.js`, `backend/migrations/` | Sequelize CLI config plus initial schema migration for current models |
 | Error handling hierarchy | `backend/src/middleware/errorHandler.ts` | AppError, NotFoundError, ValidationError, etc. |
 | Winston logging | `backend/src/config/logger.ts` | Daily rotation |
 | Sentry integration | `backend/src/app.ts` | Conditional on `SENTRY_DSN` |
@@ -303,13 +308,11 @@ testflow-saas-platform/
 | S3 artifact uploads | Report dirs detected | Wire `uploadReport()` to actually upload to S3 and return signed URLs |
 | GitLab/Bitbucket/Azure DevOps webhooks | Metadata accepted | Build inbound trigger routes for these providers |
 | `pyproject.toml` support | Detection exists | Full package-manager install support needed |
-| Stripe webhook hardening | Basic implementation | Add raw-body handling for signature verification |
 
 ### ❌ Not Yet Started
 
 | Feature | Priority | Notes |
 |---------|----------|-------|
-| Production migration files | HIGH | Currently using `sequelize.sync()`; need proper migration files |
 | Terraform Redis/ElastiCache | MEDIUM | Redis not provisioned in cloud |
 | Terraform ECS/EKS deployment | MEDIUM | No compute provisioning |
 | Email verification flow | LOW | Feature flag exists (`FEATURE_EMAIL_VERIFICATION`) but not implemented |
@@ -331,6 +334,7 @@ testflow-saas-platform/
 |------|-------|---------------|---------|
 | 2026-05-15 | Initial | `SKILLS.md` | Created SKILLS.md with full project standards and implementation tracker |
 | 2026-05-15 | Antigravity | `SKILLS.md`, `README.md` | Aligned both files: added orchestration model, dependency manifests, worker commands, webhook events, git conventions, and SendGrid to SKILLS; fixed bcryptjs, added SKILLS.md to project tree, and added AI agent note in README |
+| 2026-08-31 | Codex | `backend/src/app.ts`, `backend/src/routes/subscriptions.ts`, `backend/.sequelizerc`, `backend/config/config.js`, `backend/migrations/20260831000000-create-initial-schema.js`, `.env.example`, `README.md`, `SKILLS.md` | Hardened Stripe webhooks and added Sequelize CLI production migration config with the initial schema migration |
 
 ---
 

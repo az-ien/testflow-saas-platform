@@ -64,6 +64,7 @@ app.use('/api/runs', apiKeyLimiter);
 
 // ─── Body Parsing ─────────────────────────────────────────────────────────────
 app.use(compression());
+app.use('/api/subscriptions/stripe-webhook', express.raw({ type: 'application/json', limit: '10mb' }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 app.use(morgan('combined', { stream: { write: (msg) => logger.http(msg.trim()) } }));

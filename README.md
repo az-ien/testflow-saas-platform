@@ -34,16 +34,16 @@
 - GitHub inbound webhook route for push and pull request events
 - Outbound signed run webhooks
 - Stripe checkout, billing portal, and subscription routes
+- Stripe webhook signature verification with raw-body parsing and subscription metadata handling
+- Sequelize CLI production migration config and initial schema migration
 - Terraform foundation for AWS VPC, RDS PostgreSQL, S3 artifact bucket, and security groups
 
 ### Planned or Partially Implemented
 
 - S3 artifact uploads: report directories are detected by the worker, but uploading to S3 and returning report URLs is still pending.
 - GitLab, Bitbucket, and Azure DevOps inbound trigger routes: these providers are accepted as project metadata, but only GitHub webhook triggers are currently implemented.
-- Production migrations: development uses Sequelize sync, but production migration files are not included yet.
 - Terraform Redis/compute deployment: Redis/ElastiCache, ECS/EKS, load balancers, and service deployment are not provisioned by the current Terraform module.
 - Python `pyproject.toml` dependency installation: the worker detects Python repositories, but full `pyproject.toml` package-manager support still needs to be wired in.
-- Stripe webhook hardening: production deployments should add raw-body handling for Stripe signature verification.
 
 ---
 
@@ -246,6 +246,8 @@ testflow-saas-platform/
 │   │   ├── models/             # Sequelize models
 │   │   ├── routes/             # REST endpoints
 │   │   └── services/           # Business logic
+│   ├── config/                 # Sequelize CLI config
+│   ├── migrations/             # Production database migrations
 │   ├── Dockerfile
 │   └── package.json
 ├── frontend/                   # React dashboard
@@ -304,6 +306,15 @@ terraform apply
 ```
 
 This creates: VPC, 2 public + 2 private subnets, RDS PostgreSQL 15, S3 bucket, security groups.
+
+### Run Database Migrations
+
+```bash
+cd backend
+NODE_ENV=production npm run migrate
+```
+
+Run migrations after setting the production database environment variables and before starting the API service.
 
 ### Deploy Services
 
