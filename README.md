@@ -94,12 +94,12 @@ See also [`skills/completed-work.md`](skills/completed-work.md).
 - Playwright explorer with per-job Chromium: snapshot, click/fill, optional authenticated crawl, action log
 - Scenario classification: VERIFIED / NEEDS_REVIEW / UNSUPPORTED
 - Human approval for plans, scenarios, and healing
-- Playwright test generation with requirement tags and page objects
-- Generated test review, optional GitHub PR, and execution via the existing worker
+- Playwright test generation (`pages/`, `fixtures/`, `test-data/`, `tests/`) written to a workspace and compile-checked
+- Generated test review, optional GitHub PR, and execution of **those generated files**
 - Failure analysis + healing history + approved re-run
 - QE dashboard, coverage, and AI activity audit log
-- Additive database migration `20260901000000-create-ai-qe-schema.js`
-- Unit tests for planner, validator, generator, healer, adapters, explorer (including real Chromium), GitHub parsing, and ownership checks
+- Additive database migrations for AI QE schema, scenario evidence refs, and generated-test compile/execution status
+- Unit tests for planner, validator, generator, healer, adapters, explorer (including real Chromium), generated-test runner, GitHub parsing, and ownership checks
 
 ## Partially Completed
 
@@ -118,7 +118,7 @@ See also [`skills/completed-work.md`](skills/completed-work.md).
 ## Remaining Work
 
 - Authenticated artifact download API
-- Generated-test execution / browser healing (see `docs/QE_ENGINE_PLAN.md`)
+- Browser-based healing (see `docs/QE_ENGINE_PLAN.md`)
 - Encrypt repo tokens and env vars at rest
 - API integration tests, frontend tests, GitHub Actions CI
 - OpenAPI spec

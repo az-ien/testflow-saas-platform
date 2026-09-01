@@ -24,7 +24,8 @@ Only items that are implemented in this repository and covered by code, APIs, or
 |---------|----------|-------|
 | AI planner | `backend/src/ai/planner/` | Evidence-first scenarios; unmatched AC kept as review/unsupported |
 | Hallucination validator | `backend/src/ai/validator/` | VERIFIED / NEEDS_REVIEW / UNSUPPORTED; start URL is not control proof |
-| AI generator | `backend/src/ai/generator/` + Playwright adapter | Approved scenarios → Playwright files |
+| AI generator | `backend/src/ai/generator/` + Playwright adapter | Approved scenarios → workspace Playwright files + compile check |
+| Generated test runner | `backend/src/ai/executor/GeneratedTestRunner.ts` | `playwright test --list` (COMPILES) and `playwright test` (PASSED/FAILED) on generated files |
 | AI healer | `backend/src/ai/healer/` | Failure analysis, no assertion deletion |
 | Configurable AI providers | `backend/src/ai/providers/` | heuristic, OpenAI-compatible, Anthropic |
 | Playwright application explorer | `backend/src/ai/browser/` | Real Chromium: navigate, snapshot, fill/click login when credentials exist, same-origin crawl, action log |
@@ -32,7 +33,7 @@ Only items that are implemented in this repository and covered by code, APIs, or
 | Requirements API + UI | `/api/requirements`, `RequirementsPage` | Plain text, user story, GitHub issue import |
 | Test plan workflow | `/api/test-plans` | Explore → plan → validate asynchronously |
 | Scenario + approval UI | `/api/scenarios`, `/api/approvals` | Approve verified or selected scenarios |
-| Generated test management | `/api/generated-tests` | File review, optional GitHub PR, execute |
+| Generated test management | `/api/generated-tests` | File review, optional GitHub PR, execute generated workspace |
 | Healing API + UI | `/api/healing` | History, approve/reject, re-run |
 | Coverage + AI activity | `/api/qe` | Dashboard summary and requirement coverage |
 | AI worker | `backend/src/workers/aiWorker.ts` | BullMQ `ai-workflow` |
@@ -40,7 +41,7 @@ Only items that are implemented in this repository and covered by code, APIs, or
 | Frontend AI QE navigation | `DashboardLayout`, new pages | Dashboard, requirements, plans, scenarios, approvals, generated tests, healing, coverage |
 | Usage dimensions | `PLAN_LIMITS`, `UsageMeter` | planning, exploration, healing, runs |
 | Ownership checks | `projectAccess.ts`, AI processors | userId + projectId on reads/writes |
-| Unit tests | `backend/src/ai/**/*.test.ts` | Planner, validator, generator, healer, adapters, GitHub parse, isolation |
+| Unit tests | `backend/src/ai/**/*.test.ts` | Planner, validator, generator, healer, adapters, generated runner, GitHub parse, isolation |
 
 ## Definition-of-success mapping
 
@@ -55,8 +56,8 @@ Only items that are implemented in this repository and covered by code, APIs, or
 | Create evidence-backed scenarios | Completed for observed UI (Phase 4). Unmatched criteria stay NEEDS_REVIEW or UNSUPPORTED. |
 | Validate scenarios | Completed (Phase 5). A start URL is not treated as proof of a control. |
 | Review/approve | Completed |
-| Generate automated tests | Partial — Playwright-like files in DB, not a workspace run (Phase 7) |
-| Execute in isolated workers | Completed for **connected repo** tests; generated files are not what runs (Phase 8) |
+| Generate automated tests | Completed — Playwright layout on disk + JSONB, compile-checked (Phase 7) |
+| Execute in isolated workers | Completed for **generated** Playwright files (Phase 8) and connected-repo tests |
 | Failed tests analyzed | Partial — log classification only (Phase 10) |
 | Propose healing fix | Partial — no browser reproduce/rerun validation (Phase 11) |
 | Approve fix and re-run | Completed |

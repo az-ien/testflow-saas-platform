@@ -8,7 +8,7 @@ import {
 } from 'sequelize';
 import { v4 as uuidv4 } from 'uuid';
 import sequelize from '../config/database';
-import { GeneratedFile } from '../ai/types';
+import { GeneratedFile, CompileStatus, ExecutionStatus } from '../ai/types';
 
 export type GeneratedTestStatus =
   | 'draft'
@@ -32,6 +32,11 @@ export class GeneratedTest extends Model<
   declare framework: CreationOptional<string>;
   declare status: CreationOptional<GeneratedTestStatus>;
   declare files: CreationOptional<GeneratedFile[]>;
+  declare compileStatus: CreationOptional<CompileStatus>;
+  declare executionStatus: CreationOptional<ExecutionStatus>;
+  declare workspacePath: CreationOptional<string | null>;
+  declare compileLog: CreationOptional<string | null>;
+  declare lastRunId: CreationOptional<string | null>;
   declare branchName: CreationOptional<string | null>;
   declare pullRequestUrl: CreationOptional<string | null>;
   declare commitSha: CreationOptional<string | null>;
@@ -50,6 +55,11 @@ GeneratedTest.init(
     framework: { type: DataTypes.STRING(50), allowNull: false, defaultValue: 'playwright' },
     status: { type: DataTypes.STRING(30), allowNull: false, defaultValue: 'ready' },
     files: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
+    compileStatus: { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'pending' },
+    executionStatus: { type: DataTypes.STRING(20), allowNull: false, defaultValue: 'pending' },
+    workspacePath: { type: DataTypes.STRING(1000), allowNull: true },
+    compileLog: { type: DataTypes.TEXT, allowNull: true },
+    lastRunId: { type: DataTypes.UUID, allowNull: true },
     branchName: { type: DataTypes.STRING(200), allowNull: true },
     pullRequestUrl: { type: DataTypes.STRING(1000), allowNull: true },
     commitSha: { type: DataTypes.STRING(40), allowNull: true },

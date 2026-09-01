@@ -15,6 +15,7 @@ export type AiJobName =
   | 'EXPLORE_APPLICATION'
   | 'VALIDATE_SCENARIOS'
   | 'GENERATE_TEST'
+  | 'EXECUTE_GENERATED_TEST'
   | 'ANALYZE_FAILURE'
   | 'HEAL_TEST'
   | 'RE_RUN_TEST';
@@ -26,6 +27,10 @@ export type WorkflowJobStatus =
   | 'failed'
   | 'cancelled'
   | 'waiting_approval';
+
+export type CompileStatus = 'pending' | 'compiles' | 'failed';
+
+export type ExecutionStatus = 'pending' | 'queued' | 'running' | 'passed' | 'failed' | 'error';
 
 export interface ScenarioStep {
   order: number;

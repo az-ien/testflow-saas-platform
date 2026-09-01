@@ -7,6 +7,7 @@ import { HealerService } from '../ai/healer/HealerService';
 import { ExplorationResult } from '../ai/types';
 import { PlaywrightExplorer } from '../ai/browser/PlaywrightExplorer';
 import { extractExploreCredentials } from '../ai/browser/credentials';
+import { GeneratedTestRunner } from '../ai/executor/GeneratedTestRunner';
 import { toEvidenceRecords } from '../mcp/playwright/EvidenceCollector';
 import { Project } from '../models/Project';
 import { Requirement } from '../models/Requirement';
@@ -33,6 +34,7 @@ const validator = new ValidatorService(provider);
 const generator = new GeneratorService(provider);
 const healer = new HealerService(provider);
 const explorer = new PlaywrightExplorer();
+const generatedRunner = new GeneratedTestRunner();
 
 const assertOwnedRecord = <T extends { userId: string }>(
   entity: T | null,
@@ -96,6 +98,9 @@ export const processAiJob = async (job: Job<AiWorkflowJobData>): Promise<void> =
         break;
       case 'GENERATE_TEST':
         await generateTests(job.data);
+        break;
+      case 'EXECUTE_GENERATED_TEST':
+        await executeGeneratedTest(job.data);
         break;
       case 'ANALYZE_FAILURE':
         await analyzeFailure(job.data);
@@ -411,7 +416,7 @@ const generateTests = async (job: AiWorkflowJobData): Promise<void> => {
       framework: project.framework,
     });
 
-    await GeneratedTest.create({
+    const record = await GeneratedTest.create({
       projectId: job.projectId,
       userId: job.userId,
       requirementId: requirement.id,
@@ -419,8 +424,32 @@ const generateTests = async (job: AiWorkflowJobData): Promise<void> => {
       scenarioId: scenario.id,
       framework: project.framework || 'playwright',
       status: 'ready',
+      compileStatus: 'pending',
+      executionStatus: 'pending',
       files,
     });
+
+    try {
+      const workspacePath = await generatedRunner.materialize({
+        userId: job.userId,
+        projectId: job.projectId,
+        generatedTestId: record.id,
+        files,
+      });
+      const compile = await generatedRunner.compileCheck(workspacePath);
+      await record.update({
+        workspacePath,
+        compileStatus: compile.status,
+        compileLog: compile.log,
+      });
+    } catch (err: any) {
+      logger.error('Generated test workspace compile failed', { error: err.message, generatedTestId: record.id });
+      await record.update({
+        compileStatus: 'failed',
+        compileLog: err.message,
+      });
+    }
+
     await scenario.update({ status: 'generated' });
   }
 
@@ -434,6 +463,101 @@ const generateTests = async (job: AiWorkflowJobData): Promise<void> => {
     correlationId: job.correlationId,
     details: { count: scenarios.length },
   });
+};
+
+const executionEnv = (
+  project: Project,
+  extras: Record<string, string | undefined> = {}
+): Record<string, string | undefined> => {
+  const credentials = extractExploreCredentials(project.environmentVariables);
+  return {
+    ...(project.environmentVariables || {}),
+    APP_URL: project.applicationUrl || project.environmentVariables?.APP_URL || '',
+    BASE_URL: project.applicationUrl || '',
+    TEST_USERNAME: credentials.username || project.environmentVariables?.TEST_USERNAME || '',
+    TEST_PASSWORD: credentials.password || project.environmentVariables?.TEST_PASSWORD || '',
+    ...extras,
+  };
+};
+
+const executeGeneratedTest = async (job: AiWorkflowJobData): Promise<void> => {
+  const generated = assertOwnedProjectRecord(
+    await GeneratedTest.findByPk(job.generatedTestId),
+    job,
+    'Generated test'
+  );
+  const project = assertProject(await Project.findByPk(job.projectId), job);
+  const run = job.testRunId
+    ? assertOwnedProjectRecord(await TestRun.findByPk(job.testRunId), job, 'Test run')
+    : await TestRun.create({
+        projectId: job.projectId,
+        userId: job.userId,
+        status: 'queued',
+        framework: generated.framework,
+        triggeredBy: 'dashboard',
+        triggerSource: 'ai_generate',
+        correlationId: job.correlationId,
+        testPlanId: generated.testPlanId,
+        scenarioId: generated.scenarioId,
+        generatedTestId: generated.id,
+        queuedAt: new Date(),
+      });
+
+  const startedAt = new Date();
+  await run.update({ status: 'running', startedAt });
+  await generated.update({ executionStatus: 'running', lastRunId: run.id });
+
+  try {
+    const workspacePath = await generatedRunner.materialize({
+      userId: job.userId,
+      projectId: job.projectId,
+      generatedTestId: generated.id,
+      files: generated.files || [],
+    });
+    if (generated.compileStatus !== 'compiles') {
+      const compile = await generatedRunner.compileCheck(workspacePath);
+      await generated.update({
+        workspacePath,
+        compileStatus: compile.status,
+        compileLog: compile.log,
+      });
+      if (!compile.ok) {
+        throw new Error(compile.log || 'Generated Playwright files did not compile');
+      }
+    }
+
+    const result = await generatedRunner.execute(workspacePath, executionEnv(project));
+    const completedAt = new Date();
+    await run.update({
+      status: result.status === 'passed' ? 'passed' : result.status === 'failed' ? 'failed' : 'error',
+      results: result.results,
+      summary: result.summary,
+      logs: result.logs,
+      completedAt,
+      durationMs: completedAt.getTime() - startedAt.getTime(),
+    });
+    await generated.update({
+      status: 'executed',
+      executionStatus: result.status === 'passed' ? 'passed' : result.status === 'error' ? 'error' : 'failed',
+      workspacePath,
+      lastRunId: run.id,
+    });
+    await maybeAnalyzeFailure(run);
+  } catch (err: any) {
+    const completedAt = new Date();
+    await run.update({
+      status: 'error',
+      logs: [err.message],
+      completedAt,
+      durationMs: completedAt.getTime() - startedAt.getTime(),
+    });
+    await generated.update({
+      status: 'failed',
+      executionStatus: 'error',
+      lastRunId: run.id,
+    });
+    throw err;
+  }
 };
 
 const analyzeFailure = async (job: AiWorkflowJobData): Promise<void> => {
@@ -531,21 +655,36 @@ const rerunTest = async (job: AiWorkflowJobData): Promise<void> => {
     queuedAt: new Date(),
   });
 
-  const queued = await runQueue.add('execute-test-run', {
-    runId: run.id,
-    projectId: project.id,
-    userId: job.userId,
-    repoUrl: project.repoUrl,
-    repoBranch: run.branch || project.repoBranch,
-    repoAccessToken: project.repoAccessToken,
-    repoProvider: project.repoProvider,
-    framework: project.framework,
-    testPattern: run.testPattern || project.testPattern,
-    environmentVariables: project.environmentVariables,
-    webhookUrl: project.webhookUrl,
-    webhookSecret: project.webhookSecret,
-  });
-  await run.update({ workerJobId: queued.id?.toString() });
+  if (original.generatedTestId) {
+    const generatedJob = await orchestrator.enqueue({
+      jobName: 'EXECUTE_GENERATED_TEST',
+      projectId: job.projectId,
+      userId: job.userId,
+      correlationId: job.correlationId,
+      generatedTestId: original.generatedTestId,
+      testRunId: run.id,
+      testPlanId: original.testPlanId || undefined,
+      entityType: 'test_run',
+      entityId: run.id,
+    });
+    await run.update({ workerJobId: generatedJob.id });
+  } else {
+    const queued = await runQueue.add('execute-test-run', {
+      runId: run.id,
+      projectId: project.id,
+      userId: job.userId,
+      repoUrl: project.repoUrl,
+      repoBranch: run.branch || project.repoBranch,
+      repoAccessToken: project.repoAccessToken,
+      repoProvider: project.repoProvider,
+      framework: project.framework,
+      testPattern: run.testPattern || project.testPattern,
+      environmentVariables: project.environmentVariables,
+      webhookUrl: project.webhookUrl,
+      webhookSecret: project.webhookSecret,
+    });
+    await run.update({ workerJobId: queued.id?.toString() });
+  }
 
   if (job.healingAttemptId) {
     await HealingAttempt.update(
@@ -555,7 +694,7 @@ const rerunTest = async (job: AiWorkflowJobData): Promise<void> => {
   }
 };
 
-export const maybeAnalyzeFailure = async (run: TestRun): Promise<void> => {
+export async function maybeAnalyzeFailure(run: TestRun): Promise<void> {
   if (run.status !== 'failed') return;
   const project = await Project.findByPk(run.projectId);
   if (!project || project.userId !== run.userId) return;
@@ -569,6 +708,6 @@ export const maybeAnalyzeFailure = async (run: TestRun): Promise<void> => {
     entityType: 'test_run',
     entityId: run.id,
   });
-};
+}
 
 logger.info(`AI processors ready (provider=${provider.name})`);

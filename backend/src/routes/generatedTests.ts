@@ -7,7 +7,7 @@ import { TestRun } from '../models/TestRun';
 import { User } from '../models/User';
 import { assertOwned } from '../services/projectAccess';
 import githubService from '../services/GitHubService';
-import { runQueue } from '../services/RunQueue';
+import { orchestrator } from '../orchestration/WorkflowOrchestrator';
 import { PlanLimitError, ValidationError } from '../middleware/errorHandler';
 import { recordActivity } from '../services/AiAudit';
 
@@ -81,7 +81,8 @@ router.post('/:id/execute', async (req: Request, res: Response, next: NextFuncti
     const test = await GeneratedTest.findByPk(req.params.id);
     assertOwned(test, req.user!.userId, 'Generated test');
     const project = await Project.findByPk(test!.projectId);
-    if (!project?.repoUrl) throw new ValidationError('Connect a repository before executing generated tests');
+    if (!project) throw new ValidationError('Project not found');
+    if (!test!.files?.length) throw new ValidationError('Generated test has no files to execute');
     const user = await User.findByPk(req.user!.userId);
     if (user && user.monthlyRunsUsed! >= user.monthlyRunsLimit!) {
       throw new PlanLimitError(`Monthly run limit reached (${user.monthlyRunsLimit} runs). Upgrade your plan.`);
@@ -104,26 +105,34 @@ router.post('/:id/execute', async (req: Request, res: Response, next: NextFuncti
     });
 
     await User.increment('monthlyRunsUsed', { by: 1, where: { id: req.user!.userId } });
-    const job = await runQueue.add('execute-test-run', {
-      runId: run.id,
+    const workflow = await orchestrator.enqueue({
+      jobName: 'EXECUTE_GENERATED_TEST',
       projectId: project.id,
       userId: req.user!.userId,
-      repoUrl: project.repoUrl,
-      repoBranch: project.repoBranch,
-      repoAccessToken: project.repoAccessToken,
-      repoProvider: project.repoProvider,
-      framework: project.framework,
-      testPattern: project.testPattern,
-      environmentVariables: {
-        ...(project.environmentVariables || {}),
-        APP_URL: project.applicationUrl || '',
-      },
-      webhookUrl: project.webhookUrl,
-      webhookSecret: project.webhookSecret,
+      correlationId,
+      generatedTestId: test!.id,
+      testRunId: run.id,
+      testPlanId: test!.testPlanId,
+      entityType: 'generated_test',
+      entityId: test!.id,
     });
-    await run.update({ workerJobId: job.id?.toString() });
-    await test!.update({ status: 'executed' });
-    res.status(202).json({ runId: run.id, status: 'queued' });
+    await run.update({ workerJobId: workflow.id });
+    await test!.update({ executionStatus: 'queued' });
+    await recordActivity({
+      projectId: test!.projectId,
+      userId: req.user!.userId,
+      action: 'generated_test_execute',
+      actor: 'user',
+      entityType: 'generated_test',
+      entityId: test!.id,
+      details: { runId: run.id },
+    });
+    res.status(202).json({
+      runId: run.id,
+      status: 'queued',
+      compileStatus: test!.compileStatus,
+      executionStatus: 'queued',
+    });
   } catch (err) { next(err); }
 });
 

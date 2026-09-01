@@ -1,12 +1,16 @@
 import { GeneratedFile, PlannedScenario, RepoInventory } from '../types';
-
-const toPascal = (value: string): string =>
-  value
-    .replace(/[^a-zA-Z0-9]+/g, ' ')
-    .split(' ')
-    .filter(Boolean)
-    .map((part) => part[0].toUpperCase() + part.slice(1))
-    .join('');
+import {
+  classifyStep,
+  collectControls,
+  controlForStep,
+  DiscoveredControl,
+  fillValueExpr,
+  isPasswordControl,
+  isUsernameControl,
+  playwrightLocatorExpr,
+  toPascal,
+} from '../generator/controls';
+import { assertGeneratedSafety } from '../generator/safety';
 
 export class PlaywrightAdapter {
   generate(input: {
@@ -16,75 +20,146 @@ export class PlaywrightAdapter {
     applicationUrl?: string | null;
     inventory?: RepoInventory | null;
   }): GeneratedFile[] {
-    const files: GeneratedFile[] = [];
-    const inventory = input.inventory;
-    const testDir = inventory?.testDir || 'tests/generated';
-    const pagesDir = inventory?.pagesDir || 'pages';
-    const pageName = `${toPascal(input.scenario.title).slice(0, 40) || 'Generated'}Page`;
+    void input.inventory;
+    const controls = collectControls(input.scenario);
+    const pageName = `${toPascal(input.scenario.title).slice(0, 48)}Page`;
     const specName = `${input.scenario.scenarioKey.toLowerCase()}.spec.ts`;
-    const reusePages = inventory?.existingPages?.length ? inventory.existingPages : [];
+    const usedMethods = this.usedMethods(input.scenario, controls);
 
-    const pageObject = this.pageObject(pageName, input.scenario, input.applicationUrl);
-    const spec = this.spec({
-      requirementKey: input.requirementKey,
-      requirementTitle: input.requirementTitle,
-      scenario: input.scenario,
-      pageName,
-      applicationUrl: input.applicationUrl,
-      reusePages,
-    });
-
-    files.push({
-      path: `${pagesDir}/${pageName}.ts`,
-      content: pageObject,
-      language: 'typescript',
-      kind: 'page_object',
-    });
-    files.push({
-      path: `${testDir}/${specName}`,
-      content: spec,
-      language: 'typescript',
-      kind: 'test',
-    });
-
-    if (!inventory?.existingFixtures?.length) {
-      files.push({
-        path: 'fixtures/baseTest.ts',
-        content: this.fixture(pageName, pagesDir),
+    const files: GeneratedFile[] = [
+      {
+        path: `pages/${pageName}.ts`,
+        content: this.pageObject(pageName, controls, usedMethods, input.applicationUrl),
+        language: 'typescript',
+        kind: 'page_object',
+      },
+      {
+        path: `fixtures/baseTest.ts`,
+        content: this.fixture(pageName),
         language: 'typescript',
         kind: 'fixture',
-      });
-    }
+      },
+      {
+        path: `test-data/users.ts`,
+        content: this.testData(),
+        language: 'typescript',
+        kind: 'test_data',
+      },
+      {
+        path: `tests/${specName}`,
+        content: this.spec({
+          requirementKey: input.requirementKey,
+          requirementTitle: input.requirementTitle,
+          scenario: input.scenario,
+          pageName,
+          controls,
+          usedMethods,
+        }),
+        language: 'typescript',
+        kind: 'test',
+      },
+      {
+        path: 'playwright.config.ts',
+        content: this.config(input.applicationUrl),
+        language: 'typescript',
+        kind: 'config',
+      },
+    ];
 
+    assertGeneratedSafety(files);
     return files;
   }
 
-  private pageObject(pageName: string, scenario: PlannedScenario, applicationUrl?: string | null): string {
-    const locators = scenario.steps
-      .filter((step) => step.target)
-      .map((step) => {
-        const field = toPascal(step.target || 'control');
-        const target = step.target || '';
-        const locator = /[#.\[:]/.test(target)
-          ? `page.locator('${target.replace(/'/g, "\\'")}')`
-          : `page.getByRole('button', { name: /${target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/i }).or(page.getByLabel(/${target.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/i)).or(page.getByTestId('${target}'))`;
-        return `  readonly ${field}Control;`;
-      });
+  private usedMethods(
+    scenario: PlannedScenario,
+    controls: DiscoveredControl[]
+  ): Set<string> {
+    const methods = new Set<string>(['open']);
+    for (const step of scenario.steps) {
+      const kind = classifyStep(step);
+      const control = controlForStep(step, controls);
+      if (kind === 'fill' && control) methods.add(`fill${toPascal(control.key)}`);
+      if (kind === 'click' && control) methods.add(`click${toPascal(control.key)}`);
+      if (kind === 'verify' && control) methods.add(`expect${toPascal(control.key)}Visible`);
+      if (!control && /log ?in|sign in/i.test(step.action) && this.canLogin(controls)) {
+        methods.add('login');
+      }
+    }
+    return methods;
+  }
 
-    const uniqueLocators = [...new Set(locators)];
+  private canLogin(controls: DiscoveredControl[]): boolean {
+    const hasUser = controls.some((control) => isUsernameControl(control));
+    const hasPassword = controls.some((control) => isPasswordControl(control));
+    const hasSubmit = controls.some((control) =>
+      /login|submit|sign/i.test(`${control.key} ${control.value}`)
+    );
+    return hasUser && hasPassword && hasSubmit;
+  }
 
-    return `import { Page, expect } from '@playwright/test';
+  private pageObject(
+    pageName: string,
+    controls: DiscoveredControl[],
+    usedMethods: Set<string>,
+    applicationUrl?: string | null
+  ): string {
+    const fields = controls.map((control) => `  readonly ${control.key}: Locator;`);
+    const assignments = controls.map(
+      (control) => `    this.${control.key} = ${playwrightLocatorExpr(control)};`
+    );
+
+    const methods: string[] = [
+      `  async open(): Promise<void> {
+    await this.page.goto(process.env.APP_URL || process.env.BASE_URL || ${JSON.stringify(applicationUrl || '/')});
+  }`,
+    ];
+
+    for (const control of controls) {
+      const fillName = `fill${toPascal(control.key)}`;
+      const clickName = `click${toPascal(control.key)}`;
+      const expectName = `expect${toPascal(control.key)}Visible`;
+      if (usedMethods.has(fillName)) {
+        methods.push(`  async ${fillName}(value: string): Promise<void> {
+    await this.${control.key}.fill(value);
+  }`);
+      }
+      if (usedMethods.has(clickName)) {
+        methods.push(`  async ${clickName}(): Promise<void> {
+    await this.${control.key}.click();
+  }`);
+      }
+      if (usedMethods.has(expectName)) {
+        methods.push(`  async ${expectName}(): Promise<void> {
+    await expect(this.${control.key}).toBeVisible();
+  }`);
+      }
+    }
+
+    if (usedMethods.has('login')) {
+      const user = controls.find((control) => isUsernameControl(control));
+      const password = controls.find((control) => isPasswordControl(control));
+      const submit = controls.find((control) =>
+        /login|submit|sign/i.test(`${control.key} ${control.value}`)
+      );
+      if (user && password && submit) {
+        methods.push(`  async login(username: string, password: string): Promise<void> {
+    await this.${user.key}.fill(username);
+    await this.${password.key}.fill(password);
+    await this.${submit.key}.click();
+  }`);
+      }
+    }
+
+    return `import { expect, Locator, Page } from '@playwright/test';
 
 export class ${pageName} {
-  constructor(private readonly page: Page) {}
-${uniqueLocators.length ? `\n${uniqueLocators.join('\n')}\n` : ''}
-  async open(): Promise<void> {
-    await this.page.goto(process.env.APP_URL || '${applicationUrl || '/'}');
+${fields.join('\n')}
+
+  constructor(readonly page: Page) {
+${assignments.join('\n')}
   }
 
-  async expectLoaded(): Promise<void> {
-    await expect(this.page).toHaveURL(/.+/);
-  }
+${methods.join('\n\n')}
 }
 `;
   }
@@ -94,65 +169,50 @@ ${uniqueLocators.length ? `\n${uniqueLocators.join('\n')}\n` : ''}
     requirementTitle: string;
     scenario: PlannedScenario;
     pageName: string;
-    applicationUrl?: string | null;
-    reusePages: string[];
+    controls: DiscoveredControl[];
+    usedMethods: Set<string>;
   }): string {
     const steps = input.scenario.steps
-      .map(
-        (step) => `    await test.step('${step.action.replace(/'/g, "\\'")}', async () => {
-      ${this.stepBody(step, input.applicationUrl)}
-    });`
-      )
+      .map((step) => {
+        const kind = classifyStep(step);
+        const control = controlForStep(step, input.controls);
+        let body = 'await expect(app.page.locator(\'body\')).toBeVisible();';
+        if (kind === 'navigate') {
+          body = 'await app.open();';
+        } else if (kind === 'fill' && control) {
+          body = `await app.fill${toPascal(control.key)}(${fillValueExpr(step, control)});`;
+        } else if (kind === 'click' && control) {
+          body = `await app.click${toPascal(control.key)}();`;
+        } else if (kind === 'verify' && control) {
+          body = `await app.expect${toPascal(control.key)}Visible();`;
+        } else if (/log ?in|sign in/i.test(step.action) && input.usedMethods.has('login')) {
+          body = 'await app.login(credentials.username, credentials.password);';
+        }
+        return `    await test.step(${JSON.stringify(step.action)}, async () => {
+      ${body}
+    });`;
+      })
       .join('\n\n');
 
-    return `import { test, expect } from '@playwright/test';
-import { ${input.pageName} } from '../../pages/${input.pageName}';
+    return `import { test, expect } from '../fixtures/baseTest';
+import { credentials } from '../test-data/users';
 
 // spec: ${input.requirementKey}
 // scenario: ${input.scenario.scenarioKey}
 
-test.describe('${input.requirementTitle.replace(/'/g, "\\'")}', () => {
-  test('${input.scenario.title.replace(/'/g, "\\'")}', {
-    tag: ['@generated', '@${input.requirementKey}', '@${input.scenario.scenarioKey}'],
-    annotation: {
-      type: 'requirement',
-      description: '${input.requirementKey} — ${input.requirementTitle.replace(/'/g, "\\'")}'
-    }
-  }, async ({ page }) => {
-    const app = new ${input.pageName}(page);
-    await app.open();
-    await app.expectLoaded();
-
+test.describe(${JSON.stringify(input.requirementTitle)}, () => {
+  test(${JSON.stringify(`${input.scenario.title} @generated @${input.requirementKey} @${input.scenario.scenarioKey}`)}, async ({ app }) => {
 ${steps}
 
-    await expect(page).not.toHaveTitle(/error/i);
+    await expect(app.page).not.toHaveTitle(/error/i);
   });
 });
 `;
   }
 
-  private stepBody(step: { action: string; target?: string; expected?: string }, applicationUrl?: string | null): string {
-    const action = step.action.toLowerCase();
-    if (action.startsWith('open') || action.includes('navigate')) {
-      return `await page.goto(process.env.APP_URL || '${applicationUrl || '/'}');`;
-    }
-    if (step.target && (action.includes('enter') || action.includes('type') || action.includes('fill'))) {
-      const value = action.includes('password') ? "process.env.TEST_PASSWORD || ''" : "process.env.TEST_USERNAME || ''";
-      return `await page.getByLabel(/${(step.target).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/i).or(page.getByPlaceholder(/${(step.target).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/i)).or(page.getByTestId('${step.target}')).fill(${value});`;
-    }
-    if (step.target && (action.includes('click') || action.includes('submit') || action.includes('activate'))) {
-      return `await page.getByRole('button', { name: /${(step.target).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/i }).or(page.getByText(/${(step.target).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/i)).or(page.getByTestId('${step.target}')).click();`;
-    }
-    if (step.expected || action.startsWith('verify')) {
-      const expected = (step.expected || step.action).replace(/'/g, "\\'");
-      return `await expect(page.getByText(/${expected.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/i)).toBeVisible();`;
-    }
-    return `await expect(page.locator('body')).toBeVisible();`;
-  }
-
-  private fixture(pageName: string, pagesDir: string): string {
-    return `import { test as base } from '@playwright/test';
-import { ${pageName} } from '../${pagesDir}/${pageName}';
+  private fixture(pageName: string): string {
+    return `import { test as base, expect } from '@playwright/test';
+import { ${pageName} } from '../pages/${pageName}';
 
 export const test = base.extend<{ app: ${pageName} }>({
   app: async ({ page }, use) => {
@@ -160,7 +220,42 @@ export const test = base.extend<{ app: ${pageName} }>({
   },
 });
 
-export { expect } from '@playwright/test';
+export { expect };
+`;
+  }
+
+  private testData(): string {
+    return `export const credentials = {
+  username: process.env.TEST_USERNAME || '',
+  password: process.env.TEST_PASSWORD || '',
+};
+`;
+  }
+
+  private config(applicationUrl?: string | null): string {
+    const fallback = applicationUrl || '';
+    return `import { defineConfig, devices } from '@playwright/test';
+
+export default defineConfig({
+  testDir: './tests',
+  fullyParallel: false,
+  retries: 0,
+  workers: 1,
+  reporter: [
+    ['list'],
+    ['json', { outputFile: 'test-results/results.json' }],
+  ],
+  use: {
+    baseURL: process.env.APP_URL || process.env.BASE_URL || ${JSON.stringify(fallback)},
+    screenshot: 'only-on-failure',
+    trace: 'retain-on-failure',
+    video: 'retain-on-failure',
+  },
+  projects: [
+    { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
+  ],
+  outputDir: 'test-results',
+});
 `;
   }
 }
