@@ -18,9 +18,9 @@ Each agent is a TypeScript service invoked by a BullMQ job on the `ai-workflow` 
 | Generator | `GENERATE_TEST` | Produce Playwright files for **approved** scenarios | Generate for unsupported or unapproved rows |
 | Executor | `EXECUTE_GENERATED_TEST` + existing `test-runs` worker | Run **generated** Playwright files in isolation; keep customer-repo runs | Silently write to `main` |
 | Analyzer | `ANALYZE_FAILURE` | Reproduce in a browser, classify, propose an assertion-safe patch | Weaken tests |
-| Healer | `HEAL_TEST` | Apply an approved patch to the generated workspace, optional feature-branch PR | Remove assertions or write `main` |
+| Healer | `HEAL_TEST` | Apply an approved patch to the generated workspace, then a feature-branch PR when a token exists | Remove assertions or write `main` |
 
-Human approval sits between validate and generate, and again before a healed patch becomes a repository change.
+Human approval sits between validate and generate, again before a healed patch becomes a repository change, and again before generated workspaces are published to a feature branch.
 
 ## Browser automation abstraction
 
@@ -58,11 +58,13 @@ Validator
         ↓
 Dashboard approval
         ↓
-GeneratedTest.files (JSONB) + workspace on disk
+GeneratedTest.files (JSONB) + workspace on disk + workspaceDiff
         ↓
-EXECUTE_GENERATED_TEST / optional GitHub feature-branch PR
+Git publish approval (token) or dashboard-only (no token)
         ↓
-Failure → Analyzer → HealingAttempt → approval → isolated re-run
+Feature-branch PR / EXECUTE_GENERATED_TEST
+        ↓
+Failure → Analyzer → HealingAttempt → approval → isolated re-run → feature-branch PR when a token exists
 ```
 
 ## What is production-quality today
@@ -71,9 +73,8 @@ Failure → Analyzer → HealingAttempt → approval → isolated re-run
 - Evidence is stored in PostgreSQL (`scenario_evidence`) and screenshots under `ARTIFACT_DIR`.
 - Planner emits scenarios from observed controls; unmatched or invented features stay review/unsupported (Phase 4).
 - Validator requires observed controls; a start URL is not enough (Phase 5).
-- Approval workflow, generated Playwright workspace compile/run, and browser healing of generated files.
+- Approval workflow, generated Playwright workspace compile/run, browser healing of generated files, and workspace git publish (diff → approval → feature-branch PR).
 
 ## What is still thinner than the target engine
 
 - Customer-repo **source** healing (connected-repo runs are classified, not patched).
-- Workspace git-as-default (feature-branch PR is still optional and token-gated).

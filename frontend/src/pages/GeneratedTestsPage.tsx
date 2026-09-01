@@ -1,24 +1,37 @@
 import React, { useEffect, useState } from 'react';
 import { generatedTestsAPI } from '../services/api';
+import WorkspaceDiffPreview from '../components/WorkspaceDiffPreview';
 
 const badgeClass = (value?: string) => {
-  if (value === 'compiles' || value === 'passed' || value === 'generated' || value === 'ready') return 'badge-passed';
-  if (value === 'failed' || value === 'error') return 'badge-failed';
-  if (value === 'queued' || value === 'running') return 'badge-running';
+  if (value === 'compiles' || value === 'passed' || value === 'generated' || value === 'ready' || value === 'pr_opened') return 'badge-passed';
+  if (value === 'failed' || value === 'error' || value === 'rejected') return 'badge-failed';
+  if (value === 'queued' || value === 'running' || value === 'awaiting_approval') return 'badge-running';
+  if (value === 'unavailable' || value === 'none') return 'badge-queued';
   return 'badge-queued';
 };
+
+const gitLabel = (status?: string) => {
+  if (status === 'awaiting_approval') return 'needs publish approval';
+  if (status === 'pr_opened') return 'PR opened';
+  if (status === 'unavailable') return 'dashboard only';
+  if (status === 'rejected') return 'publish rejected';
+  return status || 'no git';
+};
+
+const canOpenPr = (status?: string) => status === 'awaiting_approval' || status === 'rejected' || status === 'none';
 
 export default function GeneratedTestsPage() {
   const [items, setItems] = useState<any[]>([]);
   const [openId, setOpenId] = useState<string | null>(null);
-  const [busyId, setBusyId] = useState<string | null>(null);
+  const [diffId, setDiffId] = useState<string | null>(null);
+  const [busy, setBusy] = useState<{ id: string; action: 'execute' | 'pr' } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const load = () => generatedTestsAPI.list().then(({ data }) => setItems(data.generatedTests || []));
   useEffect(() => { load(); }, []);
 
   const execute = async (id: string) => {
-    setBusyId(id);
+    setBusy({ id, action: 'execute' });
     setError(null);
     try {
       await generatedTestsAPI.execute(id);
@@ -26,7 +39,20 @@ export default function GeneratedTestsPage() {
     } catch (err: any) {
       setError(err?.response?.data?.error || err?.message || 'Execute failed');
     } finally {
-      setBusyId(null);
+      setBusy(null);
+    }
+  };
+
+  const openPr = async (id: string) => {
+    setBusy({ id, action: 'pr' });
+    setError(null);
+    try {
+      await generatedTestsAPI.openPr(id);
+      await load();
+    } catch (err: any) {
+      setError(err?.response?.data?.error || err?.message || 'Open PR failed');
+    } finally {
+      setBusy(null);
     }
   };
 
@@ -36,7 +62,7 @@ export default function GeneratedTestsPage() {
         <h1 className="text-2xl font-bold">Generated Tests</h1>
         <p className="text-muted text-sm mt-1">
           Playwright files written from approved scenarios. Execute runs those generated files, not the customer repository.
-          Pull requests never target production by default.
+          Publishing opens a feature-branch pull request after approval. Workspaces stay in the dashboard when no GitHub token is configured.
         </p>
       </div>
       {error && <div className="card text-sm" style={{ color: 'var(--color-danger)' }}>{error}</div>}
@@ -54,21 +80,32 @@ export default function GeneratedTestsPage() {
                     ? `executed · ${item.executionStatus}`
                     : (item.executionStatus || 'pending')}
                 </span>
-                {item.pullRequestUrl ? <span>{item.pullRequestUrl}</span> : null}
+                <span className={badgeClass(item.gitStatus)}>{gitLabel(item.gitStatus)}</span>
+                {item.pullRequestUrl ? (
+                  <a className="text-indigo-400" href={item.pullRequestUrl} target="_blank" rel="noreferrer">{item.pullRequestUrl}</a>
+                ) : null}
               </div>
             </div>
             <div className="flex gap-2">
               <button className="btn-secondary !text-xs" onClick={() => setOpenId(openId === item.id ? null : item.id)}>View files</button>
-              <button className="btn-secondary !text-xs" onClick={() => generatedTestsAPI.openPr(item.id).then(load)}>Open PR</button>
+              <button className="btn-secondary !text-xs" onClick={() => setDiffId(diffId === item.id ? null : item.id)}>View diff</button>
+              <button
+                className="btn-secondary !text-xs"
+                disabled={Boolean(busy) || item.gitStatus === 'unavailable' || item.gitStatus === 'pr_opened' || !canOpenPr(item.gitStatus)}
+                onClick={() => openPr(item.id)}
+              >
+                {item.gitStatus === 'pr_opened' ? 'PR opened' : busy?.id === item.id && busy?.action === 'pr' ? 'Opening…' : 'Open PR'}
+              </button>
               <button
                 className="btn-primary !text-xs"
-                disabled={busyId === item.id}
+                disabled={Boolean(busy)}
                 onClick={() => execute(item.id)}
               >
-                {busyId === item.id ? 'Queuing…' : 'Execute'}
+                {busy?.id === item.id && busy?.action === 'execute' ? 'Queuing…' : 'Execute'}
               </button>
             </div>
           </div>
+          {diffId === item.id && <WorkspaceDiffPreview diffs={item.workspaceDiff} />}
           {openId === item.id && (
             <div className="space-y-3">
               {item.compileLog && item.compileStatus === 'failed' && (

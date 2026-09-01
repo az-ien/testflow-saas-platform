@@ -8,7 +8,7 @@ import {
 } from 'sequelize';
 import { v4 as uuidv4 } from 'uuid';
 import sequelize from '../config/database';
-import { GeneratedFile, CompileStatus, ExecutionStatus } from '../ai/types';
+import { GeneratedFile, CompileStatus, ExecutionStatus, GitPublishStatus, WorkspaceFileDiff } from '../ai/types';
 
 export type GeneratedTestStatus =
   | 'draft'
@@ -37,6 +37,8 @@ export class GeneratedTest extends Model<
   declare workspacePath: CreationOptional<string | null>;
   declare compileLog: CreationOptional<string | null>;
   declare lastRunId: CreationOptional<string | null>;
+  declare workspaceDiff: CreationOptional<WorkspaceFileDiff[]>;
+  declare gitStatus: CreationOptional<GitPublishStatus>;
   declare branchName: CreationOptional<string | null>;
   declare pullRequestUrl: CreationOptional<string | null>;
   declare commitSha: CreationOptional<string | null>;
@@ -60,6 +62,8 @@ GeneratedTest.init(
     workspacePath: { type: DataTypes.STRING(1000), allowNull: true },
     compileLog: { type: DataTypes.TEXT, allowNull: true },
     lastRunId: { type: DataTypes.UUID, allowNull: true },
+    workspaceDiff: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
+    gitStatus: { type: DataTypes.STRING(30), allowNull: false, defaultValue: 'none' },
     branchName: { type: DataTypes.STRING(200), allowNull: true },
     pullRequestUrl: { type: DataTypes.STRING(1000), allowNull: true },
     commitSha: { type: DataTypes.STRING(40), allowNull: true },
@@ -75,6 +79,7 @@ GeneratedTest.init(
       { fields: ['user_id'] },
       { fields: ['scenario_id'] },
       { fields: ['test_plan_id'] },
+      { fields: ['git_status'] },
     ],
   }
 );

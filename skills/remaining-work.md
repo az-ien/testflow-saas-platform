@@ -17,9 +17,9 @@ These are not implemented. Do not mark them complete.
 - Organization/team model and RBAC beyond user ownership
 - WebSocket live updates (dashboard still polls/refreshes)
 - Additional agentic framework adapters (Cypress, Selenium, pytest) — execution already works, generation does not
-- Controlled locator self-healing that auto-opens a GitHub PR (`autoCreatePullRequest` + token still required)
 - Coverage analytics beyond requirement/scenario/generated-test counts
 - Email verification and SendGrid (flags exist)
+- GitHub Actions quality gate on generated workspaces (report/trace upload after a feature-branch PR)
 
 ## Infrastructure
 

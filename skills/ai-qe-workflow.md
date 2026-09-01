@@ -27,16 +27,18 @@ VERIFIED | NEEDS_REVIEW | UNSUPPORTED
     ↓
 Human approval  (WAIT_FOR_APPROVAL status)
     ↓
-GENERATE_TEST  (Playwright adapter writes a workspace and compile-checks it)
+GENERATE_TEST  (Playwright adapter writes a workspace, compile-checks it, stores a git diff)
     ↓
-Review generated files / optional feature-branch PR
+Git publish approval (when a repo token exists)  →  feature-branch PR
+    ↓
+Review generated files / dashboard-only when no token
     ↓
 EXECUTE_GENERATED_TEST  (runs the generated files)
     ↓
 PASS → dashboard
 FAIL → ANALYZE_FAILURE (browser reproduce + isolation rerun)
     ↓
-Healing proposal → human approval → HEAL_TEST (apply generated files) → RE_RUN_TEST
+Healing proposal → human approval → HEAL_TEST (apply generated files; feature-branch PR if a token exists) → RE_RUN_TEST
 ```
 
 ## Classification rules
@@ -57,7 +59,7 @@ The validator will not upgrade a deterministic `UNSUPPORTED` result to `VERIFIED
 | `verified_auto` | VERIFIED scenarios are marked approved; generation still follows `autoGenerateOnApprove` |
 | `manual_all` | Same as always; kept for explicit UI copy |
 
-`autoCreatePullRequest` defaults to **false**. Healing and generation never push to `main`.
+`autoCreatePullRequest` defaults to **false** and does **not** skip git publish approval on generate. Generate never auto-opens a PR. Healing approval is git approval: if a token exists, TestFlow opens a feature-branch PR after apply. Without a token, files stay in the dashboard. Head is never `main`.
 
 ## Job ownership
 

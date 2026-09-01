@@ -33,15 +33,16 @@ Only items that are implemented in this repository and covered by code, APIs, or
 | Requirements API + UI | `/api/requirements`, `RequirementsPage` | Plain text, user story, GitHub issue import |
 | Test plan workflow | `/api/test-plans` | Explore → plan → validate asynchronously |
 | Scenario + approval UI | `/api/scenarios`, `/api/approvals` | Approve verified or selected scenarios |
-| Generated test management | `/api/generated-tests` | File review, optional GitHub PR, execute generated workspace |
-| Healing API + UI | `/api/healing` | History, approve/reject, re-run |
+| Generated test management | `/api/generated-tests` | File review, stored workspace diff, execute generated workspace, Open PR after git approval |
+| Healing API + UI | `/api/healing` | History, approve/reject, re-run; token present → feature-branch PR after heal approval |
+| Workspace git publish | `backend/src/ai/git/`, Approvals + Generated Tests | Diff vs connected branch, approval required, feature-branch PR only; no token → dashboard files |
 | Coverage + AI activity | `/api/qe` | Dashboard summary and requirement coverage |
 | AI worker | `backend/src/workers/aiWorker.ts` | BullMQ `ai-workflow` |
 | QE data model + migration | `backend/migrations/20260901000000-create-ai-qe-schema.js` | Requirements through healing |
 | Frontend AI QE navigation | `DashboardLayout`, new pages | Dashboard, requirements, plans, scenarios, approvals, generated tests, healing, coverage |
 | Usage dimensions | `PLAN_LIMITS`, `UsageMeter` | planning, exploration, healing, runs |
 | Ownership checks | `projectAccess.ts`, AI processors | userId + projectId on reads/writes |
-| Unit tests | `backend/src/ai/**/*.test.ts` | Planner, validator, generator, healer, adapters, generated runner, GitHub parse, isolation |
+| Unit tests | `backend/src/ai/**/*.test.ts` | Planner, validator, generator, healer, adapters, generated runner, workspace diff, feature-branch guard, GitHub parse, isolation |
 
 ## Definition-of-success mapping
 
@@ -60,5 +61,6 @@ Only items that are implemented in this repository and covered by code, APIs, or
 | Execute in isolated workers | Completed for **generated** Playwright files (Phase 8) and connected-repo tests |
 | Failed tests analyzed | Completed for generated Playwright files (Phase 10). Connected-repo failures are still log + live page, not source patches. |
 | Propose healing fix | Completed for generated files (Phase 11). Isolation rerun must pass for high confidence; assertions cannot be dropped. |
-| Approve fix and re-run | Completed — apply to generated workspace, then `RE_RUN_TEST`; verified only if that run passes |
+| Approve fix and re-run | Completed — apply to generated workspace, then `RE_RUN_TEST`; verified only if that run passes. Token present → feature-branch PR. |
+| Publish generated files | Completed (Phase 9) — stored diff, git approval, feature-branch PR; dashboard-only without a token |
 | Traceability visible | Completed (coverage + scenario/plan/generated-test pages) |

@@ -315,6 +315,7 @@ testflow-saas-platform/
 | AI worker | `backend/src/workers/aiWorker.ts` | `ai-workflow` BullMQ consumer |
 | QE APIs | `backend/src/routes/{requirements,testPlans,scenarios,approvals,generatedTests,healing,qe}.ts` | Authenticated + ownership-checked |
 | AI QE frontend | `frontend/src/pages/*` | Workflow navigation |
+| Workspace git publish | `backend/src/ai/git/`, Approvals, Generated Tests | Stored diff, approval, feature-branch PR; never `main` |
 | skills/ knowledge base | `skills/` | Status docs for the next agent |
 
 ### 🔧 In Progress / Partially Implemented
@@ -325,7 +326,7 @@ testflow-saas-platform/
 | GitLab/Bitbucket/Azure DevOps webhooks | Metadata accepted | Build inbound trigger routes |
 | `pyproject.toml` support | Detection exists | Full package-manager install support |
 | Playwright MCP stdio | Client exists; default backend is Playwright | Do not set `BROWSER_AUTOMATION_BACKEND=mcp` — it throws by design |
-| GitHub generated-test PRs | Service + UI | OAuth app; token always required |
+| GitHub generated-test PRs | Diff + approval + feature-branch PR | OAuth app; inline review comments |
 | Org tenancy | User+project isolation | Organization model |
 | Stripe AI meters | API usage counters | Stripe billing dimensions |
 
@@ -352,6 +353,7 @@ testflow-saas-platform/
 
 | Date | Agent | Files Changed | Summary |
 |------|-------|---------------|---------|
+| 2026-09-01 | Cursor Grok 4.6 | git diff/publish, GitHubService, GeneratedTest git fields, approvals, UI, tests, docs/skills | Workspace git flow: stored diffs, publish approval, feature-branch PRs only; dashboard-only without a token |
 | 2026-09-01 | Cursor Grok 4.6 | healer, FailureReproducer, processors, healing UI, tests, docs/skills | Browser-reproduce generated-test failures, assertion-safe locator patches, isolation rerun, apply only after approval |
 | 2026-09-01 | Cursor Grok 4.6 | generator, PlaywrightAdapter, GeneratedTestRunner, generated_tests statuses, execute route, UI, tests, docs/skills | Generate real Playwright workspaces from discovered selectors and execute those files (COMPILES / PASSED / FAILED) |
 | 2026-09-01 | Cursor Grok 4.6 | planner, validator, evidence matching, scenario evidence_refs, tests, docs/skills | Evidence-first planner and strict validator (control locators required; start URL is not proof) |

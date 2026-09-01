@@ -18,7 +18,7 @@ export class Approval extends Model<InferAttributes<Approval>, InferCreationAttr
   declare generatedTestId: CreationOptional<string | null>;
   declare healingAttemptId: CreationOptional<string | null>;
   declare decision: 'approved' | 'rejected' | 'changes_requested';
-  declare scope: CreationOptional<'verified' | 'selected' | 'all' | 'healing'>;
+  declare scope: CreationOptional<'verified' | 'selected' | 'all' | 'healing' | 'git_publish'>;
   declare comment: CreationOptional<string | null>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;

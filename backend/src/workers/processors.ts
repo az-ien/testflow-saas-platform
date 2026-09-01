@@ -25,6 +25,8 @@ import { TestRun } from '../models/TestRun';
 import { WorkflowJob } from '../models/WorkflowJob';
 import { recordActivity } from '../services/AiAudit';
 import githubService from '../services/GitHubService';
+import { captureWorkspaceGitState, publishGeneratedWorkspace } from '../ai/git/workspaceGit';
+import { healFeatureBranch } from '../ai/git/featureBranch';
 import { incrementUsage } from '../services/UsageMeter';
 import { orchestrator } from '../orchestration/WorkflowOrchestrator';
 import { AiWorkflowJobData } from '../orchestration/queues';
@@ -421,6 +423,7 @@ const generateTests = async (job: AiWorkflowJobData): Promise<void> => {
       framework: project.framework,
     });
 
+    const git = await captureWorkspaceGitState({ files, project });
     const record = await GeneratedTest.create({
       projectId: job.projectId,
       userId: job.userId,
@@ -432,6 +435,8 @@ const generateTests = async (job: AiWorkflowJobData): Promise<void> => {
       compileStatus: 'pending',
       executionStatus: 'pending',
       files,
+      workspaceDiff: git.workspaceDiff,
+      gitStatus: git.gitStatus,
     });
 
     try {
@@ -690,6 +695,7 @@ const healTest = async (job: AiWorkflowJobData): Promise<void> => {
       throw new Error(`Refusing to apply healing patch: ${issues.join('; ')}`);
     }
     await generated.update({ files: attempt.files, compileStatus: 'pending' });
+    const git = await captureWorkspaceGitState({ files: attempt.files, project });
     const workspacePath = await generatedRunner.materialize({
       userId: job.userId,
       projectId: job.projectId,
@@ -701,24 +707,34 @@ const healTest = async (job: AiWorkflowJobData): Promise<void> => {
       workspacePath,
       compileStatus: compile.status,
       compileLog: compile.log,
+      workspaceDiff: git.workspaceDiff,
+      gitStatus: git.gitStatus,
     });
     if (!compile.ok) {
       await attempt.update({ status: 'failed', summary: compile.log });
       throw new Error(compile.log || 'Healed Playwright files did not compile');
     }
-  }
 
-  if (project.autoCreatePullRequest && project.repoUrl && project.repoAccessToken && attempt.files.length) {
-    const pr = await githubService.createPullRequest({
-      repoUrl: project.repoUrl,
-      token: project.repoAccessToken,
-      branchName: `testflow/heal-${attempt.id.slice(0, 8)}`,
-      baseBranch: project.repoBranch || 'main',
-      title: `testflow: heal failing test`,
-      body: `${attempt.summary}\n\n${attempt.proposedFix}\n\nThis pull request was opened by TestFlow AI QE after human approval. It does not merge to the default branch.`,
-      files: attempt.files,
-    });
-    await attempt.update({ status: 'applied', pullRequestUrl: pr.pullRequestUrl });
+    if (project.repoUrl && project.repoAccessToken) {
+      try {
+        const pr = await publishGeneratedWorkspace({
+          generated,
+          project,
+          branchName: healFeatureBranch(attempt.id),
+          title: 'testflow: heal failing test',
+          body: `${attempt.summary}\n\n${attempt.proposedFix}\n\nThis pull request was opened by TestFlow AI QE after human approval. It does not merge to the default branch.`,
+        });
+        await attempt.update({ status: 'applied', pullRequestUrl: pr.pullRequestUrl });
+      } catch (err: any) {
+        logger.error('Healing feature-branch PR failed; workspace remains dashboard-only until republished', {
+          error: err.message,
+          healingAttemptId: attempt.id,
+        });
+        await attempt.update({ status: 'applied' });
+      }
+    } else {
+      await attempt.update({ status: 'applied' });
+    }
   } else {
     await attempt.update({ status: 'applied' });
   }

@@ -20,7 +20,7 @@ Covered now:
 - Healer categories, assertion preservation, and locator patches (`HealerService.test.ts`)
 - Browser reproduce + isolation rerun of a stale locator (`healing.integration.test.ts`) — requires Playwright browsers
 - Framework adapter defaulting to Playwright (`FrameworkAdapter.test.ts`)
-- GitHub URL parsing (`GitHubService.test.ts`)
+- GitHub URL parsing, feature-branch guard, and workspace diffs (`GitHubService.test.ts`, `backend/src/ai/git/*.test.ts`)
 - Heuristic provider fallback (`providers/index.test.ts`)
 - User isolation helper (`projectAccess.test.ts`)
 - Exploration policy, credentials, and MCP stub honesty (`backend/src/ai/browser/*.test.ts`)
@@ -44,9 +44,10 @@ There is still no frontend test runner (pre-existing gap).
 4. Click **Plan with AI**
 5. Watch the test plan move exploring → planning → validating → awaiting_approval
 6. Approve verified scenarios
-7. Inspect generated Playwright files (`pages/`, `fixtures/`, `test-data/`, `tests/`)
-8. Execute generated tests (no customer repository required)
-9. On failure, open AI Healing and approve/reject the proposal
+7. Inspect generated Playwright files (`pages/`, `fixtures/`, `test-data/`, `tests/`) and the stored workspace diff
+8. If a GitHub token is configured, approve git publish (or reject to keep files in the dashboard)
+9. Execute generated tests (no customer repository required)
+10. On failure, open AI Healing and approve/reject the proposal
 
 ## Known test gaps
 
