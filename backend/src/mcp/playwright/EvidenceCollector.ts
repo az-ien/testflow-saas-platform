@@ -13,7 +13,12 @@ export const toEvidenceRecords = (exploration: ExplorationResult) => {
     kind: 'observation',
     url: exploration.startUrl,
     summary: `Exploration started at ${exploration.startUrl}`,
-    payload: { observations: exploration.observations, error: exploration.error || null },
+    payload: {
+      observations: exploration.observations,
+      error: exploration.error || null,
+      authenticated: Boolean(exploration.authenticated),
+      loginAttempted: Boolean(exploration.loginAttempted),
+    },
   });
 
   for (const page of exploration.pages) {
@@ -21,13 +26,19 @@ export const toEvidenceRecords = (exploration: ExplorationResult) => {
       kind: 'url',
       url: page.url,
       summary: page.title || page.url,
-      payload: { title: page.title, headings: page.headings },
+      payload: { title: page.title, headings: page.headings, reachedBy: page.reachedBy || null },
     });
     records.push({
       kind: 'dom',
       url: page.url,
       summary: `DOM snapshot for ${page.title || page.url}`,
-      payload: { snapshot: page.snapshot, interactiveElements: page.interactiveElements },
+      payload: {
+        title: page.title,
+        snapshot: page.snapshot,
+        interactiveElements: page.interactiveElements,
+        headings: page.headings,
+        reachedBy: page.reachedBy || null,
+      },
     });
     if (page.screenshotPath) {
       records.push({
@@ -38,6 +49,19 @@ export const toEvidenceRecords = (exploration: ExplorationResult) => {
         artifactPath: page.screenshotPath,
       });
     }
+  }
+
+  if (exploration.actionLog?.length) {
+    records.push({
+      kind: 'action',
+      url: exploration.startUrl,
+      summary: `${exploration.actionLog.length} browser actions recorded`,
+      payload: {
+        actions: exploration.actionLog,
+        authenticated: Boolean(exploration.authenticated),
+        loginAttempted: Boolean(exploration.loginAttempted),
+      },
+    });
   }
 
   if (exploration.consoleMessages.length) {

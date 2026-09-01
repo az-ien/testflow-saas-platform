@@ -13,7 +13,9 @@ Add Requirement (plain text, user story, GitHub issue)
     ↓
 POST /api/test-plans  →  EXPLORE_APPLICATION
     ↓
-PlaywrightExplorer (Chromium) / optional Playwright MCP
+PlaywrightExplorer (Chromium via BrowserAutomationInterface)
+        ↓
+Evidence store (URLs, DOM, screenshots, actions, console, network)
     ↓
 Evidence store (URLs, DOM, screenshots, console, network)
     ↓

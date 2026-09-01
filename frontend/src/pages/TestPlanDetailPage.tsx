@@ -56,7 +56,7 @@ export default function TestPlanDetailPage() {
       <div className="card">
         <h3 className="font-semibold text-sm mb-3">Observed evidence</h3>
         <div className="space-y-2 text-sm">
-          {(plan.evidence || []).slice(0, 12).map((item: any) => (
+          {(plan.evidence || []).slice(0, 40).map((item: any) => (
             <div key={item.id} className="p-3 rounded-lg" style={{ background: 'var(--color-surface2)' }}>
               <div className="text-xs text-muted">{item.kind}</div>
               <div>{item.summary}</div>

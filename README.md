@@ -2,7 +2,7 @@
 
 An AI Quality Engineering SaaS: provide an application and requirements, and the platform explores the product, creates evidence-based scenarios, validates them, waits for human approval, generates Playwright tests, executes them, and heals failures.
 
-This repository is the existing TestFlow SaaS platform **transformed**, not replaced. Cloud execution, auth, billing, and multi-framework workers remain the infrastructure layer. The agentic workflow is adapted from the concepts in [`Jiten20/playwright-agentic-quality-engineering-framework`](https://github.com/Jiten20/playwright-agentic-quality-engineering-framework) — that repository was **not copied**.
+This repository is the existing TestFlow SaaS platform **transformed**, not replaced. Cloud execution, auth, billing, and multi-framework workers remain the infrastructure layer. The product workflow is evidence-driven agentic quality engineering (explore → plan → validate → approve → generate → execute → heal).
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-green)
@@ -33,7 +33,7 @@ Playwright is the first-class framework for the AI workflow. Cypress, Selenium, 
                      └─────────────┘         └─────────────┘
 ```
 
-Details, APIs, models, and the migration matrix live in [`skills/architecture.md`](skills/architecture.md).
+Details, APIs, models, and the migration matrix live in [`skills/architecture.md`](skills/architecture.md). Engine status: [`docs/QE_ENGINE_PLAN.md`](docs/QE_ENGINE_PLAN.md).
 
 ## Core Workflow
 
@@ -53,7 +53,7 @@ This is an orchestrated job chain, not a chatbot.
 - JWT + API key authentication (retained)
 - Stripe subscriptions (retained)
 - Requirements, AI test plans, scenarios, approvals, generated tests, healing, coverage
-- Playwright application exploration with evidence storage
+- Playwright application exploration with evidence storage (interactive Chromium; login when project credentials exist)
 - Hallucination / evidence validation
 - Optional GitHub issue import and feature-branch pull requests
 - Usage limits for runs, planning, exploration, and healing
@@ -78,7 +78,7 @@ See also [`skills/completed-work.md`](skills/completed-work.md).
 
 - Requirements CRUD and GitHub issue import API
 - Asynchronous explore → plan → validate workflow (`ai-workflow` queue)
-- Playwright explorer with per-job Chromium context
+- Playwright explorer with per-job Chromium: snapshot, click/fill, optional authenticated crawl, action log
 - Scenario classification: VERIFIED / NEEDS_REVIEW / UNSUPPORTED
 - Human approval for plans, scenarios, and healing
 - Playwright test generation with requirement tags and page objects
@@ -86,13 +86,13 @@ See also [`skills/completed-work.md`](skills/completed-work.md).
 - Failure analysis + healing history + approved re-run
 - QE dashboard, coverage, and AI activity audit log
 - Additive database migration `20260901000000-create-ai-qe-schema.js`
-- Unit tests for planner, validator, generator, healer, adapters, GitHub parsing, and ownership checks
+- Unit tests for planner, validator, generator, healer, adapters, explorer (including real Chromium), GitHub parsing, and ownership checks
 
 ## Partially Completed
 
 | Feature | Status | What works | What remains | Known issues |
 |---------|--------|------------|--------------|--------------|
-| Playwright MCP stdio | Client present | Optional `PlaywrightMcpClient`; default exploration uses Playwright Chromium | Process pooling, robust JSON-RPC | MCP disabled unless `PLAYWRIGHT_MCP_ENABLED=true` |
+| Playwright MCP stdio | Isolated stub | Optional `PlaywrightMcpClient`; default exploration uses Playwright Chromium | Process pooling, robust JSON-RPC | `BROWSER_AUTOMATION_BACKEND=mcp` throws; do not treat MCP as working |
 | S3 artifact uploads | Report dirs detected | Local evidence screenshots under `ARTIFACT_DIR` | S3 upload + signed URLs | `uploadReport()` still returns null |
 | GitHub PRs for generated tests | API + UI | Feature branch + PR when a token exists | OAuth app, review UX | No token → PR creation fails |
 | AI usage billing | Limits enforced in API | Planning/healing/exploration counters | Stripe meters | Stripe still run-centric |
@@ -105,6 +105,7 @@ See also [`skills/completed-work.md`](skills/completed-work.md).
 ## Remaining Work
 
 - Authenticated artifact download API
+- Evidence-driven planner / generated-test execution / browser healing (see `docs/QE_ENGINE_PLAN.md`)
 - Encrypt repo tokens and env vars at rest
 - API integration tests, frontend tests, GitHub Actions CI
 - OpenAPI spec
@@ -118,8 +119,8 @@ Do not treat these as done. Details: [`skills/remaining-work.md`](skills/remaini
 ## Known Limitations
 
 - Without `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`, planning uses the heuristic provider (evidence-based, not LLM-creative).
-- Application exploration requires a reachable `applicationUrl` from the AI worker.
-- Generated tests are stored in the database until a human opens a PR; they are not silently committed.
+- Application exploration requires a reachable `applicationUrl` from the AI worker. Login-walled apps also need `TEST_USERNAME` / `TEST_PASSWORD` (or APP_/E2E_/LOGIN_ equivalents) on the project.
+- Generated tests are stored in the database until a human opens a PR; they are not silently committed. They are not yet compiled or executed as those files.
 - Unsupported scenarios cannot be approved for generation.
 - Multi-framework AI generation is not implemented; only Playwright generation is first-class.
 - Local artifacts are not yet served through an authenticated download API.
@@ -224,7 +225,7 @@ Existing `POST /api/runs` still queues isolated test execution.
 | Frontend | React 18, Vite, Tailwind CSS, Redux Toolkit |
 | Backend | Node.js, Express, TypeScript, Sequelize |
 | AI | Configurable LLM providers + heuristic fallback |
-| Exploration | Playwright Chromium (optional Playwright MCP) |
+| Exploration | Playwright Chromium via `BrowserAutomationInterface` |
 | Queue | Redis 7, BullMQ (`test-runs`, `ai-workflow`) |
 | Billing | Stripe |
 | IaC | Terraform (AWS foundation) |
@@ -235,6 +236,12 @@ Existing `POST /api/runs` still queues isolated test execution.
 |------|---------|
 | `SKILLS.md` | Coding standards and tracker |
 | `skills/` | Living implementation knowledge |
+| `docs/QE_ENGINE_PLAN.md` | Current vs target QE engine |
+| `docs/AGENT_ARCHITECTURE.md` | Agent split and browser interface |
+| `docs/BROWSER_EXPLORATION.md` | Explorer lifecycle |
+| `docs/EVIDENCE_MODEL.md` | Evidence kinds and traceability |
+| `docs/TEST_GENERATION.md` | Generator current vs target |
+| `docs/HEALING.md` | Healer current vs target |
 
 ## License
 

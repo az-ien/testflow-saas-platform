@@ -93,6 +93,40 @@ export interface InteractiveElement {
   href?: string;
   placeholder?: string;
   text?: string;
+  id?: string;
+  selector?: string;
+  disabled?: boolean;
+}
+
+export interface ElementLocator {
+  testId?: string;
+  role?: string;
+  name?: string;
+  css?: string;
+  text?: string;
+  placeholder?: string;
+  type?: string;
+  id?: string;
+}
+
+export type BrowserActionType =
+  | 'goto'
+  | 'click'
+  | 'fill'
+  | 'press'
+  | 'wait'
+  | 'screenshot'
+  | 'snapshot';
+
+export interface BrowserAction {
+  type: BrowserActionType;
+  timestamp: string;
+  url?: string;
+  locator?: ElementLocator;
+  result: 'ok' | 'failed';
+  error?: string;
+  notes?: string;
+  valueRedacted?: boolean;
 }
 
 export interface ExploredPage {
@@ -102,6 +136,7 @@ export interface ExploredPage {
   screenshotPath?: string;
   interactiveElements: InteractiveElement[];
   headings: string[];
+  reachedBy?: BrowserActionType | 'launch';
 }
 
 export interface ExplorationResult {
@@ -110,6 +145,9 @@ export interface ExplorationResult {
   observations: string[];
   consoleMessages: string[];
   networkErrors: string[];
+  actionLog?: BrowserAction[];
+  authenticated?: boolean;
+  loginAttempted?: boolean;
   error?: string;
 }
 
