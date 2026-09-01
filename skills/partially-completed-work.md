@@ -2,7 +2,7 @@
 
 | Feature | Status | What works | What remains | Known issues |
 |---------|--------|------------|--------------|--------------|
-| Playwright MCP stdio | Client exists | `PlaywrightMcpClient` can spawn `npx @playwright/mcp` when `PLAYWRIGHT_MCP_ENABLED=true`. Production path uses `PlaywrightExplorer` (same evidence model). | JSON-RPC handshake hardening, per-project MCP process pool, tool-call mapping to planner steps | Default is explorer, not MCP process, because stdio MCP is fragile in multi-tenant workers |
+| Playwright MCP stdio | Isolated stub | `PlaywrightMcpClient` can spawn `npx @playwright/mcp` when enabled. Production path uses `PlaywrightBrowserAutomation`. `BROWSER_AUTOMATION_BACKEND=mcp` throws rather than faking success. | JSON-RPC handshake, per-project MCP pool, mapping to planner tools | Not Jiten20 VS Code MCP |
 | GitHub generated-test PR | Service + UI button | `GitHubService.createPullRequest` commits to a feature branch and opens a PR. UI exposes "Open PR". | OAuth app install, file-level review comments, healing PR when no generated files exist | Requires `repoAccessToken`. Public GitHub API rate limits apply without a token |
 | GitHub issue import | API | `POST /api/requirements/import/github` imports open issues as requirements | UI button, pagination, Jira import | Needs a GitHub repo URL on the project |
 | S3 artifact uploads | Worker detects report dirs | Evidence screenshots stored on local `ARTIFACT_DIR`. Run report directories still detected. | Upload to S3, signed URLs, authenticated artifact download route | `uploadReport()` still returns `null` |

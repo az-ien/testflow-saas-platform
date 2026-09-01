@@ -4,9 +4,14 @@ These are not implemented. Do not mark them complete.
 
 ## High priority
 
+- Evidence-driven planner (Phase 4) — stop emitting scenarios for unmatched acceptance criteria
+- Validator must not treat `evidenceRefs: [startUrl]` as proof of a control (Phase 5)
+- Write generated Playwright files to a workspace and compile them (Phase 7)
+- Execute **generated** tests (not only the customer repo) and track GENERATED/COMPILES/EXECUTED/PASSED/FAILED (Phase 8)
+- Browser-based failure analysis and safe healing with rerun (Phases 10–11)
 - Authenticated artifact download API (screenshots/traces scoped by user/project)
 - Encrypt repository tokens and environment variables at rest
-- Backend/API integration tests against PostgreSQL (Jest currently covers AI units only)
+- Backend/API integration tests against PostgreSQL (Jest currently covers AI units + explorer browser tests)
 - CI pipeline (GitHub Actions) for backend tests, frontend build, and migrations
 - OpenAPI/Swagger for the new QE routes
 - Per-tenant AI provider keys (today: process environment)

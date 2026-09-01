@@ -20,6 +20,8 @@ Covered now:
 - GitHub URL parsing (`GitHubService.test.ts`)
 - Heuristic provider fallback (`providers/index.test.ts`)
 - User isolation helper (`projectAccess.test.ts`)
+- Exploration policy, credentials, and MCP stub honesty (`backend/src/ai/browser/*.test.ts`)
+- Real Chromium explorer against a local HTML fixture (`PlaywrightExplorer.test.ts`) — requires Playwright browsers (`npx playwright install chromium`)
 
 ## Frontend
 

@@ -160,6 +160,7 @@ TestFlow is an **orchestration service** — it does not keep its own test suite
 testflow-saas-platform/
 ├── SKILLS.md                   ← THIS FILE — AI agents read & update
 ├── skills/                     ← Living implementation knowledge
+├── docs/                       ← Jiten20 migration + agent/engine docs
 ├── README.md                   ← Public documentation / project status
 ├── .env.example                ← All env vars with descriptions
 ├── .gitignore
@@ -171,8 +172,8 @@ testflow-saas-platform/
 │   │   ├── app.ts              ← Entry point & middleware chain
 │   │   ├── config/             ← database.ts, redis.ts, logger.ts
 │   │   ├── middleware/         ← auth.ts, errorHandler.ts
-│   │   ├── ai/                 ← planner, validator, generator, healer, providers, adapters
-│   │   ├── mcp/playwright/     ← explorer + optional MCP client
+│   │   ├── ai/                 ← planner, validator, generator, healer, providers, adapters, browser
+│   │   ├── mcp/playwright/     ← evidence collector + experimental MCP client
 │   │   ├── orchestration/      ← AI workflow queue
 │   │   ├── workers/aiWorker.ts ← AI BullMQ consumer
 │   │   ├── models/             ← SaaS + AI QE models
@@ -307,7 +308,7 @@ testflow-saas-platform/
 | Terraform foundation | `terraform/main.tf` | AWS VPC, RDS PostgreSQL, S3, security groups |
 | AI QE models + migration | `backend/src/models/*`, `backend/migrations/20260901000000-create-ai-qe-schema.js` | Requirements through healing |
 | Planner / validator / generator / healer | `backend/src/ai/` | Heuristic + optional LLM |
-| Playwright explorer | `backend/src/mcp/playwright/` | Isolated Chromium; optional MCP client |
+| Playwright explorer | `backend/src/ai/browser/` + `mcp/playwright` re-export | Interactive Chromium via `BrowserAutomationInterface` (click/fill/login, action log). MCP backend is not production. |
 | AI workflow queue | `backend/src/orchestration/` | EXPLORE, PLAN, VALIDATE, GENERATE, ANALYZE, HEAL, RE_RUN |
 | AI worker | `backend/src/workers/aiWorker.ts` | `ai-workflow` BullMQ consumer |
 | QE APIs | `backend/src/routes/{requirements,testPlans,scenarios,approvals,generatedTests,healing,qe}.ts` | Authenticated + ownership-checked |
@@ -321,7 +322,10 @@ testflow-saas-platform/
 | S3 artifact uploads | Report dirs detected; local evidence screenshots stored | Wire `uploadReport()` to S3 and add authenticated download |
 | GitLab/Bitbucket/Azure DevOps webhooks | Metadata accepted | Build inbound trigger routes |
 | `pyproject.toml` support | Detection exists | Full package-manager install support |
-| Playwright MCP stdio | Client exists, explorer is default | Session pool and JSON-RPC hardening |
+| Playwright MCP stdio | Client exists; default backend is Playwright | Do not set `BROWSER_AUTOMATION_BACKEND=mcp` — it throws by design |
+| Evidence-driven planner | Heuristic + optional LLM | Stop planning from unmatched acceptance criteria (Phase 4) |
+| Real generated-test execution | Files stored in JSONB | Workspace write, compile, run generated specs (Phases 7–8) |
+| Browser-based healing | Log/string classification | Reproduce in Playwright, validate patch (Phases 10–11) |
 | GitHub generated-test PRs | Service + UI | OAuth app; token always required |
 | Org tenancy | User+project isolation | Organization model |
 | Stripe AI meters | API usage counters | Stripe billing dimensions |
@@ -349,6 +353,7 @@ testflow-saas-platform/
 
 | Date | Agent | Files Changed | Summary |
 |------|-------|---------------|---------|
+| 2026-09-01 | Cursor Grok 4.6 | `docs/*`, `backend/src/ai/browser/*`, explorer/evidence/processors, tests, skills/README | Phase 1 analysis + Phase 2 interactive Playwright exploration (`BrowserAutomationInterface`, action log, credentialed login) |
 | 2026-09-01 | Cursor Grok 4.6 | AI QE backend/frontend/workers/skills/README | Transformed TestFlow into an AI Quality Engineering SaaS while preserving existing SaaS infrastructure |
 | 2026-05-15 | Initial | `SKILLS.md` | Created SKILLS.md with full project standards and implementation tracker |
 | 2026-05-15 | Antigravity | `SKILLS.md`, `README.md` | Aligned both files: added orchestration model, dependency manifests, worker commands, webhook events, git conventions, and SendGrid to SKILLS; fixed bcryptjs, added SKILLS.md to project tree, and added AI agent note in README |

@@ -27,10 +27,11 @@ backend/src/ai/
   healer/HealerService.ts
   adapters/PlaywrightAdapter.ts
   providers/   heuristic | openai | anthropic
+  browser/     BrowserAutomationInterface, Playwright backend, explorer
 
 backend/src/mcp/playwright/
-  PlaywrightExplorer.ts      # isolated Chromium exploration
-  PlaywrightMcpClient.ts     # optional stdio MCP process
+  PlaywrightExplorer.ts      # re-export of the explorer agent
+  PlaywrightMcpClient.ts     # experimental stdio MCP — not the default backend
   EvidenceCollector.ts
 ```
 

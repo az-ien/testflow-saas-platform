@@ -27,7 +27,7 @@ Only items that are implemented in this repository and covered by code, APIs, or
 | AI generator | `backend/src/ai/generator/` + Playwright adapter | Approved scenarios → Playwright files |
 | AI healer | `backend/src/ai/healer/` | Failure analysis, no assertion deletion |
 | Configurable AI providers | `backend/src/ai/providers/` | heuristic, OpenAI-compatible, Anthropic |
-| Playwright application explorer | `backend/src/mcp/playwright/PlaywrightExplorer.ts` | Isolated Chromium session per job |
+| Playwright application explorer | `backend/src/ai/browser/` | Real Chromium: navigate, snapshot, fill/click login when credentials exist, same-origin crawl, action log |
 | Evidence persistence | `ScenarioEvidence` + artifact dir | URLs, DOM, screenshots, console, network |
 | Requirements API + UI | `/api/requirements`, `RequirementsPage` | Plain text, user story, GitHub issue import |
 | Test plan workflow | `/api/test-plans` | Explore → plan → validate asynchronously |
@@ -51,14 +51,13 @@ Only items that are implemented in this repository and covered by code, APIs, or
 | Connect application/repository | Completed (application URL + optional repo) |
 | Add a requirement | Completed |
 | Ask AI to analyze the application | Completed (`POST /api/test-plans`) |
-| Explore through Playwright | Completed (explorer; MCP client optional) |
-| Create evidence-backed scenarios | Completed |
-| Validate scenarios | Completed |
+| Explore through Playwright | Completed for interactive exploration (Phase 2). Login-walled apps require project `TEST_USERNAME`/`TEST_PASSWORD`. |
+| Create evidence-backed scenarios | Partial — planner still uses heuristics (Phase 4) |
+| Validate scenarios | Completed (classification exists; over-trust of start-URL refs is Phase 5) |
 | Review/approve | Completed |
-| Generate automated tests | Completed |
-| Execute in isolated workers | Completed (existing worker + generated-test execute) |
-| Results in dashboard | Completed (existing runs UI + QE dashboard) |
-| Failed tests analyzed | Completed (auto enqueue + healer) |
-| Propose healing fix | Completed |
+| Generate automated tests | Partial — Playwright-like files in DB, not a workspace run (Phase 7) |
+| Execute in isolated workers | Completed for **connected repo** tests; generated files are not what runs (Phase 8) |
+| Failed tests analyzed | Partial — log classification only (Phase 10) |
+| Propose healing fix | Partial — no browser reproduce/rerun validation (Phase 11) |
 | Approve fix and re-run | Completed |
 | Traceability visible | Completed (coverage + scenario/plan/generated-test pages) |

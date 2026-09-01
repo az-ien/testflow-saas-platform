@@ -5,7 +5,8 @@ import { ValidatorService } from '../ai/validator/ValidatorService';
 import { GeneratorService } from '../ai/generator/GeneratorService';
 import { HealerService } from '../ai/healer/HealerService';
 import { ExplorationResult } from '../ai/types';
-import { PlaywrightExplorer } from '../mcp/playwright/PlaywrightExplorer';
+import { PlaywrightExplorer } from '../ai/browser/PlaywrightExplorer';
+import { extractExploreCredentials } from '../ai/browser/credentials';
 import { toEvidenceRecords } from '../mcp/playwright/EvidenceCollector';
 import { Project } from '../models/Project';
 import { Requirement } from '../models/Requirement';
@@ -145,6 +146,7 @@ const exploreApplication = async (job: AiWorkflowJobData): Promise<void> => {
       correlationId: job.correlationId,
       maxPages: project.explorationMaxPages || 6,
       artifactDir: process.env.ARTIFACT_DIR || '/tmp/testflow-artifacts',
+      credentials: extractExploreCredentials(project.environmentVariables),
     });
   }
 
@@ -205,14 +207,20 @@ const loadExploration = async (planId: string, userId: string, projectId: string
       screenshotPath: undefined,
       interactiveElements: ((row.payload as any)?.interactiveElements || []) as ExplorationResult['pages'][0]['interactiveElements'],
       headings: ((row.payload as any)?.headings || []) as string[],
+      reachedBy: (row.payload as any)?.reachedBy || undefined,
     }));
   const start = evidence.find((row) => row.kind === 'observation' || row.kind === 'url');
+  const observation = evidence.find((row) => row.kind === 'observation');
+  const actionRow = evidence.find((row) => row.kind === 'action');
   return {
     startUrl: start?.url || '',
     pages,
     observations: evidence.filter((row) => row.kind === 'observation').flatMap((row) => ((row.payload as any)?.observations || []) as string[]),
     consoleMessages: evidence.filter((row) => row.kind === 'console').flatMap((row) => ((row.payload as any)?.messages || []) as string[]),
     networkErrors: evidence.filter((row) => row.kind === 'network').flatMap((row) => ((row.payload as any)?.errors || []) as string[]),
+    actionLog: ((actionRow?.payload as any)?.actions || []) as ExplorationResult['actionLog'],
+    authenticated: Boolean((observation?.payload as any)?.authenticated || (actionRow?.payload as any)?.authenticated),
+    loginAttempted: Boolean((observation?.payload as any)?.loginAttempted || (actionRow?.payload as any)?.loginAttempted),
   };
 };
 

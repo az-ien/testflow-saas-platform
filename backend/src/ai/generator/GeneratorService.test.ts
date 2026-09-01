@@ -33,5 +33,7 @@ describe('GeneratorService', () => {
     expect(spec.content).toContain('@GH-001');
     expect(spec.content).toContain('GH-001-SC01');
     expect(spec.content).not.toMatch(/waitForTimeout/);
+    expect(spec.content).not.toContain('secret_sauce');
+    expect(spec.content).not.toContain('standard_user');
   });
 });

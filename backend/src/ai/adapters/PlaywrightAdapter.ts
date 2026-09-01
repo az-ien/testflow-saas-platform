@@ -137,7 +137,7 @@ ${steps}
       return `await page.goto(process.env.APP_URL || '${applicationUrl || '/'}');`;
     }
     if (step.target && (action.includes('enter') || action.includes('type') || action.includes('fill'))) {
-      const value = action.includes('password') ? 'process.env.TEST_PASSWORD || \'secret_sauce\'' : 'process.env.TEST_USERNAME || \'standard_user\'';
+      const value = action.includes('password') ? "process.env.TEST_PASSWORD || ''" : "process.env.TEST_USERNAME || ''";
       return `await page.getByLabel(/${(step.target).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/i).or(page.getByPlaceholder(/${(step.target).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}/i)).or(page.getByTestId('${step.target}')).fill(${value});`;
     }
     if (step.target && (action.includes('click') || action.includes('submit') || action.includes('activate'))) {
