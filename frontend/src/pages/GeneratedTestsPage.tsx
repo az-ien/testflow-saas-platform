@@ -94,14 +94,14 @@ export default function GeneratedTestsPage() {
                 disabled={Boolean(busy) || item.gitStatus === 'unavailable' || item.gitStatus === 'pr_opened' || !canOpenPr(item.gitStatus)}
                 onClick={() => openPr(item.id)}
               >
-                {item.gitStatus === 'pr_opened' ? 'PR opened' : busy?.id === item.id && busy.action === 'pr' ? 'Opening…' : 'Open PR'}
+                {item.gitStatus === 'pr_opened' ? 'PR opened' : busy?.id === item.id && busy?.action === 'pr' ? 'Opening…' : 'Open PR'}
               </button>
               <button
                 className="btn-primary !text-xs"
                 disabled={Boolean(busy)}
                 onClick={() => execute(item.id)}
               >
-                {busy?.id === item.id && busy.action === 'execute' ? 'Queuing…' : 'Execute'}
+                {busy?.id === item.id && busy?.action === 'execute' ? 'Queuing…' : 'Execute'}
               </button>
             </div>
           </div>

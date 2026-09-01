@@ -16,11 +16,11 @@ export function assertFeatureBranch(head: string, base: string): void {
   if (!headName) {
     throw new ValidationError('Pull request head branch is required');
   }
-  if (headName.toLowerCase() === baseName.toLowerCase()) {
-    throw new ValidationError('Pull request head must be a feature branch, not the same as the base branch');
-  }
   if (isProtectedBranch(headName)) {
     throw new ValidationError(`Cannot open a pull request from protected branch "${headName}"`);
+  }
+  if (headName.toLowerCase() === baseName.toLowerCase()) {
+    throw new ValidationError('Pull request head must be a feature branch, not the same as the base branch');
   }
 }
 
