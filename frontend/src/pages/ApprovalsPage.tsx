@@ -51,6 +51,10 @@ export default function ApprovalsPage() {
           <div key={attempt.id} className="card">
             <div className="font-medium">{attempt.summary}</div>
             <p className="text-sm text-muted mt-2">{attempt.proposedFix}</p>
+            <div className="text-xs text-muted mt-2">
+              {attempt.category} · reproduced={String(Boolean(attempt.analysis?.reproduced))}
+              · isolation={String(Boolean(attempt.analysis?.isolationVerified))}
+            </div>
             <div className="flex gap-2 mt-4">
               <button className="btn-primary !text-xs" onClick={() => decideHeal(attempt.id, 'approved')}>Approve fix</button>
               <button className="btn-secondary !text-xs" onClick={() => decideHeal(attempt.id, 'rejected')}>Reject</button>

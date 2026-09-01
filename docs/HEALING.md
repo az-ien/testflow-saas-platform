@@ -1,48 +1,40 @@
 # Healing
 
-This document describes the **current** healer and the target engine. Phases 10–11 are not complete.
+Failed generated tests are reproduced in a real browser. Locator patches are checked against assertion-preservation rules, rerun in an isolated workspace, and applied only after human approval.
 
-## Current behavior (honest)
-
-`HealerService` classifies a failed run from error text, logs, and optional screenshot/video paths. It does **not** reopen a browser or re-run the test to verify a patch.
-
-Categories today: `locator`, `timing`, `assertion`, `application_bug`, `test_data`, `environment`, `unknown`.
-
-`preserveAssertions` is always true in the proposal object. There is not yet an automated check that a proposed file diff actually preserves assertions.
-
-Approved healing may open a **feature-branch** pull request. It never writes to `main`.
-
-## Target (Phases 10–11)
+## Flow
 
 ```text
-Test fails
+Generated test fails
         ↓
-Reproduce in a real browser (BrowserAutomationInterface)
-        ↓
-Inspect page + DOM
+Reproduce with BrowserAutomationInterface (goto, snapshot, optional login)
         ↓
 Classify:
-  1. Test defect
-  2. Application defect
-  3. Selector change
-  4. Timing/wait issue
-  5. Environment issue
-  6. Data issue
-  7. Unknown
+  locator | timing | assertion | application_bug | test_data | environment | unknown
         ↓
-Propose a minimal patch in an isolated workspace
+If a replacement control is observed, patch locators only
         ↓
-Rerun the same test
+Refuse patches that drop expect() / skip the test / add waitForTimeout
         ↓
-Require human approval before any repository change
+Isolation rerun of the patched workspace
+        ↓
+Human approval
+        ↓
+Apply to GeneratedTest workspace (optional feature-branch PR)
+        ↓
+RE_RUN_TEST — verified only if that rerun passes
 ```
 
-## Critical safety rule
+Connected-repo failures without generated files still get log + live-page classification. There is no customer-repo source patch.
+
+## Safety
 
 The healer must never “fix” a test by:
 
 - Removing assertions
 - Weakening assertions
-- Removing important steps
-- Changing expected behavior only to make the test pass
-- Silently deleting coverage
+- Adding `test.skip` / `test.fixme`
+- Adding `waitForTimeout`
+- Changing expected behaviour only to make the test pass
+
+Approved healing may open a **feature-branch** pull request. It never writes to `main`.

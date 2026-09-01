@@ -16,12 +16,12 @@ This document is the architecture comparison between TestFlow **today** and the 
 | Approval | SaaS dashboard + policies | Keep TestFlow human review | Keep TestFlow. |
 | Generator | Playwright files in `pages/`, `fixtures/`, `test-data/`, `tests/` written to a workspace and compile-checked | Same, using only discovered selectors | **Phase 7 done.** |
 | Execution | Generated workspace run with COMPILES / EXECUTED / PASSED / FAILED; customer-repo worker unchanged | Same | **Phase 8 done** for generated Playwright files. |
-| Healer | Log/string classification | Reproduce in a browser, patch, rerun | No browser reproduction. |
+| Healer | Reproduce in Chromium, patch observed locators, isolation rerun, approval before apply | Same | **Phases 10–11 done** for generated Playwright files. |
 | MCP | Optional stdio stub, default off | Optional backend behind `BrowserAutomationInterface` | Do not couple the SaaS to VS Code/Copilot MCP. |
 | GitHub | Issue import + optional feature-branch PR | Workspace diff → approval → feature-branch PR | Never commit `main`. |
 | POM / fixtures / test-data | Workspace TypeScript from discovered locators (also stored in JSONB) | Same | Files also persist for PR review. |
 
-Honest summary: **explore, plan, validate, generate, and execute generated Playwright files are in place.** Healing is still log-based.
+Honest summary: **explore, plan, validate, generate, execute generated Playwright files, and browser-heal those files are in place.** Customer-repo source healing and workspace git-as-default remain thinner.
 
 ---
 
@@ -47,7 +47,7 @@ EXPLORE_APPLICATION → PLAN_TEST → VALIDATE_SCENARIOS
         → human approval (WAIT_FOR_APPROVAL)
         → GENERATE_TEST (workspace + compile)
         → EXECUTE_GENERATED_TEST (generated files)
-        → ANALYZE_FAILURE → HEAL_TEST → RE_RUN_TEST
+        → ANALYZE_FAILURE (browser reproduce) → HEAL_TEST → RE_RUN_TEST
 ```
 
 Traceability tables already exist (`Requirement`, `TestPlan`, `Scenario`, `ScenarioEvidence`, `ScenarioValidation`, `GeneratedTest`, `TestRun`, `HealingAttempt`, `AiActivity`, `WorkflowJob`).
@@ -61,17 +61,16 @@ Agent folders already exist:
 | Validator | `backend/src/ai/validator/` | Classification rules exist |
 | Generator | `backend/src/ai/generator/` + `PlaywrightAdapter` | Workspace Playwright layout from discovered locators |
 | Executor | `backend/src/ai/executor/GeneratedTestRunner.ts` + existing `workers/test-executor/` | Generated files run in the AI worker; customer repos still use the test worker |
-| Analyzer / Healer | `backend/src/ai/healer/HealerService.ts` | Log text only |
+| Analyzer / Healer | `backend/src/ai/healer/` | Browser reproduce + assertion-safe locator patch + isolation rerun |
 
 ---
 
 ## What is missing (engine depth)
 
 1. **Workspace git flow** — generate → run → diff → approval → feature-branch PR. Never silent `main`.
-2. **Browser-based failure analysis** — reopen the app, inspect DOM, classify test vs app vs selector vs timing vs env vs data.
-3. **Safe healing** — propose a patch, rerun in isolation, refuse assertion deletion, require approval before repo change.
-4. **Optional MCP backend** — Agent → `BrowserAutomationInterface` → Playwright or future MCP, without coupling the SaaS to an IDE MCP session.
-5. **Full SaaS-path smoke** — dashboard click-through of requirement → explore → approve → generate → execute still needs a live stack; generator/runner unit tests cover the engine.
+2. **Optional MCP backend** — Agent → `BrowserAutomationInterface` → Playwright or future MCP, without coupling the SaaS to an IDE MCP session.
+3. **Full SaaS-path smoke** — dashboard click-through of requirement → explore → approve → generate → execute → heal still needs a live stack; engine unit/integration tests cover generate/run/heal.
+4. **Customer-repo source healing** — connected-repo failures are classified from logs + a live page; only generated Playwright files are patched.
 
 ---
 
@@ -123,8 +122,8 @@ Do not implement every phase at once.
 | **7** | Real Playwright generation | Valid files, discovered selectors only — **done** |
 | **8** | Real execution of **generated** tests | GENERATED/COMPILES/EXECUTED/PASSED/FAILED — **done** |
 | **9** | Git/GitHub | Workspace diff → approval → feature-branch PR |
-| **10** | Browser failure analysis | Reproduce with Playwright |
-| **11** | Safe healing | Patch + rerun + approval; never drop assertions |
+| **10** | Browser failure analysis | Reproduce with Playwright — **done** for generated tests |
+| **11** | Safe healing | Patch + isolation rerun + approval; never drop assertions — **done** for generated tests |
 | **12** | Hardening and docs | E2E smoke + limitation list |
 
 ---
@@ -141,6 +140,6 @@ Do not implement every phase at once.
 
 ## Known limitations (current)
 
-- Healer does not reopen a browser.
+- Customer-repo test **source** is not patched; only generated Playwright workspaces are.
 - Playwright MCP stdio is experimental and is **not** the default exploration backend.
 - Heuristic planner still contains some cart/product keyword bias; it is not a demo-app-only architecture, but it is not fully generic yet.
