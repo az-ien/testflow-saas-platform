@@ -105,6 +105,33 @@ services:
           cpus: '2'
           memory: 4G
 
+  # ─── AI QE Worker ────────────────────────────────────────────────────────────
+  ai-worker:
+    build:
+      context: .
+      dockerfile: ./workers/ai-worker/Dockerfile
+    container_name: testflow_ai_worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      NODE_ENV: production
+      DB_HOST: postgres
+      REDIS_HOST: redis
+      AI_WORKER_CONCURRENCY: 2
+      ARTIFACT_DIR: /tmp/testflow-artifacts
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - ai_artifacts:/tmp/testflow-artifacts
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+
   # ─── Debug Tools (optional — comment out in production) ──────────────────────
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -140,6 +167,7 @@ services:
 volumes:
   postgres_data:
   redis_data:
+  ai_artifacts:
 
 networks:
   default:

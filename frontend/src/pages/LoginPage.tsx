@@ -32,7 +32,7 @@ export default function LoginPage() {
 
         <div className="card">
           <h1 className="text-xl font-bold mb-1">Welcome back</h1>
-          <p className="text-muted text-sm mb-6">Sign in to your TestFlow account</p>
+          <p className="text-muted text-sm mb-6">Sign in to your TestFlow AI Quality Engineering workspace</p>
 
           {error && (
             <div className="mb-4 px-4 py-3 rounded-lg text-sm text-red-400 border border-red-500/20"

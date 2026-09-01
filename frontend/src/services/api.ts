@@ -92,4 +92,52 @@ export const subscriptionsAPI = {
   openPortal: () => api.post('/subscriptions/portal'),
 };
 
+export const requirementsAPI = {
+  list: (params?: { projectId?: string }) => api.get('/requirements', { params }),
+  create: (data: any) => api.post('/requirements', data),
+  get: (id: string) => api.get(`/requirements/${id}`),
+  update: (id: string, data: any) => api.patch(`/requirements/${id}`, data),
+  remove: (id: string) => api.delete(`/requirements/${id}`),
+  importGithub: (data: { projectId: string; issueNumber?: number }) =>
+    api.post('/requirements/import/github', data),
+};
+
+export const testPlansAPI = {
+  list: (params?: { projectId?: string }) => api.get('/test-plans', { params }),
+  create: (data: { requirementId: string; applicationUrl?: string }) => api.post('/test-plans', data),
+  get: (id: string) => api.get(`/test-plans/${id}`),
+};
+
+export const scenariosAPI = {
+  list: (params?: { projectId?: string; testPlanId?: string; classification?: string; status?: string }) =>
+    api.get('/scenarios', { params }),
+  get: (id: string) => api.get(`/scenarios/${id}`),
+};
+
+export const approvalsAPI = {
+  list: () => api.get('/approvals'),
+  decidePlan: (id: string, data: any) => api.post(`/approvals/plans/${id}`, data),
+  decideScenario: (id: string, data: any) => api.post(`/approvals/scenarios/${id}`, data),
+  decideHealing: (id: string, data: any) => api.post(`/approvals/healing/${id}`, data),
+};
+
+export const generatedTestsAPI = {
+  list: (params?: { projectId?: string }) => api.get('/generated-tests', { params }),
+  get: (id: string) => api.get(`/generated-tests/${id}`),
+  openPr: (id: string) => api.post(`/generated-tests/${id}/pull-request`),
+  execute: (id: string) => api.post(`/generated-tests/${id}/execute`),
+};
+
+export const healingAPI = {
+  list: (params?: { projectId?: string }) => api.get('/healing', { params }),
+  get: (id: string) => api.get(`/healing/${id}`),
+  analyzeRun: (runId: string) => api.post(`/healing/from-run/${runId}`),
+};
+
+export const qeAPI = {
+  summary: () => api.get('/qe/summary'),
+  coverage: () => api.get('/qe/coverage'),
+  activity: (params?: { projectId?: string }) => api.get('/qe/activity', { params }),
+};
+
 export default api;

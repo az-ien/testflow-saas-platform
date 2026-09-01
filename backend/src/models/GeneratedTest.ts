@@ -1,0 +1,72 @@
+import {
+  DataTypes,
+  Model,
+  CreationOptional,
+  InferAttributes,
+  InferCreationAttributes,
+  ForeignKey,
+} from 'sequelize';
+import { v4 as uuidv4 } from 'uuid';
+import sequelize from '../config/database';
+import { GeneratedFile } from '../ai/types';
+
+export type GeneratedTestStatus =
+  | 'draft'
+  | 'ready'
+  | 'pr_opened'
+  | 'committed'
+  | 'executed'
+  | 'failed'
+  | 'rejected';
+
+export class GeneratedTest extends Model<
+  InferAttributes<GeneratedTest>,
+  InferCreationAttributes<GeneratedTest>
+> {
+  declare id: CreationOptional<string>;
+  declare projectId: ForeignKey<string>;
+  declare userId: ForeignKey<string>;
+  declare requirementId: ForeignKey<string>;
+  declare testPlanId: ForeignKey<string>;
+  declare scenarioId: ForeignKey<string>;
+  declare framework: CreationOptional<string>;
+  declare status: CreationOptional<GeneratedTestStatus>;
+  declare files: CreationOptional<GeneratedFile[]>;
+  declare branchName: CreationOptional<string | null>;
+  declare pullRequestUrl: CreationOptional<string | null>;
+  declare commitSha: CreationOptional<string | null>;
+  declare createdAt: CreationOptional<Date>;
+  declare updatedAt: CreationOptional<Date>;
+}
+
+GeneratedTest.init(
+  {
+    id: { type: DataTypes.UUID, defaultValue: () => uuidv4(), primaryKey: true },
+    projectId: { type: DataTypes.UUID, allowNull: false },
+    userId: { type: DataTypes.UUID, allowNull: false },
+    requirementId: { type: DataTypes.UUID, allowNull: false },
+    testPlanId: { type: DataTypes.UUID, allowNull: false },
+    scenarioId: { type: DataTypes.UUID, allowNull: false },
+    framework: { type: DataTypes.STRING(50), allowNull: false, defaultValue: 'playwright' },
+    status: { type: DataTypes.STRING(30), allowNull: false, defaultValue: 'ready' },
+    files: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
+    branchName: { type: DataTypes.STRING(200), allowNull: true },
+    pullRequestUrl: { type: DataTypes.STRING(1000), allowNull: true },
+    commitSha: { type: DataTypes.STRING(40), allowNull: true },
+    createdAt: DataTypes.DATE,
+    updatedAt: DataTypes.DATE,
+  },
+  {
+    sequelize,
+    tableName: 'generated_tests',
+    modelName: 'GeneratedTest',
+    indexes: [
+      { fields: ['project_id'] },
+      { fields: ['user_id'] },
+      { fields: ['scenario_id'] },
+      { fields: ['test_plan_id'] },
+    ],
+  }
+);
+
+export default GeneratedTest;

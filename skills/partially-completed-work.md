@@ -1,0 +1,16 @@
+# Partially completed work
+
+| Feature | Status | What works | What remains | Known issues |
+|---------|--------|------------|--------------|--------------|
+| Playwright MCP stdio | Client exists | `PlaywrightMcpClient` can spawn `npx @playwright/mcp` when `PLAYWRIGHT_MCP_ENABLED=true`. Production path uses `PlaywrightExplorer` (same evidence model). | JSON-RPC handshake hardening, per-project MCP process pool, tool-call mapping to planner steps | Default is explorer, not MCP process, because stdio MCP is fragile in multi-tenant workers |
+| GitHub generated-test PR | Service + UI button | `GitHubService.createPullRequest` commits to a feature branch and opens a PR. UI exposes "Open PR". | OAuth app install, file-level review comments, healing PR when no generated files exist | Requires `repoAccessToken`. Public GitHub API rate limits apply without a token |
+| GitHub issue import | API | `POST /api/requirements/import/github` imports open issues as requirements | UI button, pagination, Jira import | Needs a GitHub repo URL on the project |
+| S3 artifact uploads | Worker detects report dirs | Evidence screenshots stored on local `ARTIFACT_DIR`. Run report directories still detected. | Upload to S3, signed URLs, authenticated artifact download route | `uploadReport()` still returns `null` |
+| Billing for AI usage | Limits defined | `PLAN_LIMITS` includes planning/healing/exploration. `UsageMeter` enforces them. | Stripe meters, invoices, dashboard usage charts per AI dimension | Stripe still bills the original run-centric plans |
+| Secret protection | Tokens stored, not logged | Repo tokens stay in DB and are only injected into clone URLs for that job | Encrypt `repoAccessToken` and env vars at rest | Tokens are still plaintext columns |
+| Organization isolation | User isolation | Every QE entity has `userId` + `projectId` and is checked | Organization / team membership model | Multi-user orgs are not a first-class entity |
+| Live LLM planning | Provider wired | OpenAI-compatible and Anthropic providers implemented | Prompt evaluation harness, cost tracking, per-tenant keys | Without API keys the heuristic provider is used |
+| Frontend end-to-end browser verification | Pages implemented | Navigation and forms exist for the full workflow | Automated UI tests, production visual QA | This session verified TypeScript/unit tests; browser click-through depends on local stack |
+| `pyproject.toml` worker install | Detection exists | Worker detects Python repos | Full poetry/pdm/uv install | Unchanged from prior TestFlow debt |
+| GitLab / Bitbucket / Azure inbound webhooks | Metadata accepted | Provider enum still accepted | Inbound trigger routes | Unchanged |
+| Terraform beyond foundation | VPC/RDS/S3 | Existing module kept | Redis, compute, AI worker service | Unchanged |

@@ -69,6 +69,7 @@ export default function ProjectDetailPage() {
         <div className="grid grid-cols-2 gap-4 text-sm">
           {[
             { label: 'Repository', value: project.repoUrl },
+            { label: 'Application', value: project.applicationUrl || 'Not configured' },
             { label: 'Branch',     value: project.repoBranch || 'main' },
             { label: 'Framework',  value: project.framework },
             { label: 'Pattern',    value: project.testPattern || '**/*.spec.ts' },

@@ -1,4 +1,4 @@
-import { Worker, Job } from 'bullmq';
+import { Worker, Job, Queue } from 'bullmq';
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -11,6 +11,7 @@ import { logger } from './config/logger';
 
 const QUEUE_NAME = 'test-runs';
 const CONCURRENCY = parseInt(process.env.WORKER_CONCURRENCY || '3', 10);
+const aiQueue = new Queue('ai-workflow', { connection: bullMQConnection });
 
 export interface RunJobData {
   runId: string;
@@ -82,6 +83,17 @@ const worker = new Worker<RunJobData>(
       });
 
       logger.info(`✅ Run ${runId} completed: ${finalStatus} (${passed}/${results.length} passed)`);
+
+      if (finalStatus === 'failed') {
+        await aiQueue.add('ANALYZE_FAILURE', {
+          workflowJobId: `run-fail-${runId}`,
+          jobName: 'ANALYZE_FAILURE',
+          projectId: job.data.projectId,
+          userId: job.data.userId,
+          correlationId: runId,
+          testRunId: runId,
+        });
+      }
 
     } catch (err: any) {
       logger.error(`❌ Run ${runId} failed with error:`, err);
