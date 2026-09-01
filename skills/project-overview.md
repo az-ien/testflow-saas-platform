@@ -50,7 +50,7 @@ The product workflow is evidence-driven agentic QE (Explorer, Planner, Validator
 | `skills/completed-work.md` | Working functionality |
 | `skills/partially-completed-work.md` | Started but incomplete |
 | `skills/remaining-work.md` | Not started |
-| `skills/development-workflow.md` | How to run locally |
+| `skills/development-workflow.md` | How to run locally; **AI agents must branch + PR, never work on `main`** |
 | `skills/ai-qe-workflow.md` | End-to-end AI workflow |
 | `skills/testing.md` | How tests are organized |
 | `skills/deployment.md` | Docker, Terraform, migrations |

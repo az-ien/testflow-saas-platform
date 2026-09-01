@@ -1,5 +1,13 @@
 # Development workflow
 
+## Git (mandatory for AI agents)
+
+Work on a **new branch**. Commit and push **all** changes on that branch. Open a **new pull request** into `main`.
+
+Do **not** implement, commit, or push on `main`.
+
+See `SKILLS.md` §8 and the README “AI agent git policy” section.
+
 ## Prerequisites
 
 - Node.js 20+
