@@ -1,6 +1,6 @@
 # Browser exploration
 
-Phase 2 of the Jiten20-depth upgrade. The explorer must observe a real UI. It must not invent pages, buttons, or workflows.
+Phase 2 of the QE engine upgrade. The explorer must observe a real UI. It must not invent pages, buttons, or workflows.
 
 ## Lifecycle
 
@@ -48,7 +48,7 @@ Password fill values are never written to the action log.
 ## What this is not
 
 - Not a full site crawler or security scanner
-- Not Jiten20’s Copilot MCP session (`planner_setup_page` / `browser_*` tools)
+- Not an IDE Copilot MCP session (`planner_setup_page` / `browser_*` tools)
 - Not SauceDemo-specific. Login is detected from a password field plus username/submit controls
 
 ## Configuration

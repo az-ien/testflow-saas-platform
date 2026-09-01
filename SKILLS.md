@@ -160,7 +160,7 @@ TestFlow is an **orchestration service** — it does not keep its own test suite
 testflow-saas-platform/
 ├── SKILLS.md                   ← THIS FILE — AI agents read & update
 ├── skills/                     ← Living implementation knowledge
-├── docs/                       ← Jiten20 migration + agent/engine docs
+├── docs/                       ← QE engine and agent docs
 ├── README.md                   ← Public documentation / project status
 ├── .env.example                ← All env vars with descriptions
 ├── .gitignore
@@ -353,6 +353,7 @@ testflow-saas-platform/
 
 | Date | Agent | Files Changed | Summary |
 |------|-------|---------------|---------|
+| 2026-09-01 | Cursor Grok 4.6 | docs, README, skills, McpBrowserAutomation comment | Removed third-party repo attribution; engine plan is TestFlow-owned (`docs/QE_ENGINE_PLAN.md`) |
 | 2026-09-01 | Cursor Grok 4.6 | `docs/*`, `backend/src/ai/browser/*`, explorer/evidence/processors, tests, skills/README | Phase 1 analysis + Phase 2 interactive Playwright exploration (`BrowserAutomationInterface`, action log, credentialed login) |
 | 2026-09-01 | Cursor Grok 4.6 | AI QE backend/frontend/workers/skills/README | Transformed TestFlow into an AI Quality Engineering SaaS while preserving existing SaaS infrastructure |
 | 2026-05-15 | Initial | `SKILLS.md` | Created SKILLS.md with full project standards and implementation tracker |

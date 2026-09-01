@@ -99,11 +99,10 @@ Every AI write is also recorded in `ai_activities` and `workflow_jobs` with `use
 | `pyproject.toml` install | Detection only | PARTIAL | KEEP | Worker still needs package-manager wiring |
 | Email verification / SendGrid | Flags only | REMAINING | KEEP | Out of AI QE core |
 | Organization tenancy | User scoping only | REMAINING | KEEP | Documented; user isolation is enforced |
-| Jiten20 repo files | N/A | N/A | DO NOT COPY | Concepts adapted, code not vendored |
 
 ## Important decisions
 
-1. **Do not copy the Jiten20 repository.** Agents, POM examples, and SauceDemo tests stay as methodology, not product source.
+1. **Do not hardcode a demo application** (page objects, credentials, or Copilot/VS Code as the runtime). TestFlow is a multi-tenant SaaS.
 2. **Playwright is the only first-class agentic framework.** Other frameworks remain executable through the existing worker.
 3. **Heuristic fallback is required.** The product must not be a chatbot wrapper around a single vendor.
 4. **Human approval is the default.** `approvalPolicy=verified_auto` can auto-mark VERIFIED scenarios, but generation still follows `autoGenerateOnApprove`.

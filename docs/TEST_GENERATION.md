@@ -1,6 +1,6 @@
 # Test generation
 
-This document describes the **current** generator and the Jiten20-aligned target. Phase 7 is not complete.
+This document describes the **current** generator and the target engine. Phase 7 is not complete.
 
 ## Current behavior (honest)
 

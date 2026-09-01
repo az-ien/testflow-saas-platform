@@ -2,7 +2,7 @@
 
 An AI Quality Engineering SaaS: provide an application and requirements, and the platform explores the product, creates evidence-based scenarios, validates them, waits for human approval, generates Playwright tests, executes them, and heals failures.
 
-This repository is the existing TestFlow SaaS platform **transformed**, not replaced. Cloud execution, auth, billing, and multi-framework workers remain the infrastructure layer. The agentic workflow is adapted from the concepts in [`Jiten20/playwright-agentic-quality-engineering-framework`](https://github.com/Jiten20/playwright-agentic-quality-engineering-framework) — that repository was **not copied**.
+This repository is the existing TestFlow SaaS platform **transformed**, not replaced. Cloud execution, auth, billing, and multi-framework workers remain the infrastructure layer. The product workflow is evidence-driven agentic quality engineering (explore → plan → validate → approve → generate → execute → heal).
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-green)
@@ -33,7 +33,7 @@ Playwright is the first-class framework for the AI workflow. Cypress, Selenium, 
                      └─────────────┘         └─────────────┘
 ```
 
-Details, APIs, models, and the migration matrix live in [`skills/architecture.md`](skills/architecture.md). Jiten20-depth engine status: [`docs/JITEN20_MIGRATION_PLAN.md`](docs/JITEN20_MIGRATION_PLAN.md).
+Details, APIs, models, and the migration matrix live in [`skills/architecture.md`](skills/architecture.md). Engine status: [`docs/QE_ENGINE_PLAN.md`](docs/QE_ENGINE_PLAN.md).
 
 ## Core Workflow
 
@@ -105,7 +105,7 @@ See also [`skills/completed-work.md`](skills/completed-work.md).
 ## Remaining Work
 
 - Authenticated artifact download API
-- Evidence-driven planner / generated-test execution / browser healing (see `docs/JITEN20_MIGRATION_PLAN.md`)
+- Evidence-driven planner / generated-test execution / browser healing (see `docs/QE_ENGINE_PLAN.md`)
 - Encrypt repo tokens and env vars at rest
 - API integration tests, frontend tests, GitHub Actions CI
 - OpenAPI spec
@@ -236,7 +236,7 @@ Existing `POST /api/runs` still queues isolated test execution.
 |------|---------|
 | `SKILLS.md` | Coding standards and tracker |
 | `skills/` | Living implementation knowledge |
-| `docs/JITEN20_MIGRATION_PLAN.md` | Gap analysis vs Jiten20 |
+| `docs/QE_ENGINE_PLAN.md` | Current vs target QE engine |
 | `docs/AGENT_ARCHITECTURE.md` | Agent split and browser interface |
 | `docs/BROWSER_EXPLORATION.md` | Explorer lifecycle |
 | `docs/EVIDENCE_MODEL.md` | Evidence kinds and traceability |

@@ -37,7 +37,7 @@ BrowserAutomationInterface
 - Interface: `backend/src/ai/browser/BrowserAutomationInterface.ts`
 - Playwright implementation: `backend/src/ai/browser/PlaywrightBrowserAutomation.ts`
 - Factory: `createBrowserAutomation()` (`BROWSER_AUTOMATION_BACKEND`, default `playwright`)
-- MCP implementation exists only as an explicit non-production stub. Jiten20’s VS Code Playwright Test MCP is not the TestFlow runtime.
+- MCP implementation exists only as an explicit non-production stub. An IDE Playwright Test MCP session is not the TestFlow runtime.
 
 Agents must not import `chromium` directly except inside the Playwright adapter.
 
@@ -71,7 +71,7 @@ Failure → Analyzer → HealingAttempt → approval → isolated re-run
 - Evidence is stored in PostgreSQL (`scenario_evidence`) and screenshots under `ARTIFACT_DIR`.
 - Approval workflow and multi-framework **execution** of connected repos.
 
-## What is still thinner than Jiten20
+## What is still thinner than the target engine
 
 - Planner still has heuristic keyword matching (Phase 4).
 - Validator can over-trust `evidenceRefs` (Phase 5).

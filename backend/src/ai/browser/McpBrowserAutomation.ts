@@ -7,7 +7,7 @@ import {
 
 /**
  * MCP-backed browser automation is intentionally not a production path.
- * TestFlow is a multi-tenant SaaS; Jiten20's VS Code Playwright Test MCP
+ * TestFlow is a multi-tenant SaaS; an IDE Playwright Test MCP
  * server is not equivalent to a pooled worker browser.
  *
  * Isolate the capability here instead of pretending stdio MCP works.

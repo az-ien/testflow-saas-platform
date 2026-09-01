@@ -14,14 +14,13 @@ TestFlow is no longer only a cloud test runner. It is an **AI Quality Engineerin
 6. Executes them on isolated workers
 7. Analyzes failures and proposes healing fixes
 
-The Jiten20 Playwright Agentic QE methodology (Planner, Generator, Healer, evidence validation, human approval, GitHub traceability) is the product workflow. Existing TestFlow SaaS infrastructure is the platform layer underneath that workflow.
+The product workflow is evidence-driven agentic QE (Explorer, Planner, Validator, Generator, Executor, Analyzer, Healer, human approval, GitHub traceability). Existing TestFlow SaaS infrastructure is the platform layer underneath that workflow.
 
 ## Repositories
 
 | Role | URL |
 |------|-----|
 | This product | `https://github.com/az-ien/testflow-saas-platform` |
-| Conceptual reference (not copied) | `https://github.com/Jiten20/playwright-agentic-quality-engineering-framework` |
 
 ## What was preserved
 

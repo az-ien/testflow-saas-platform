@@ -1,6 +1,6 @@
 # Healing
 
-This document describes the **current** healer and the Jiten20-aligned target. Phases 10–11 are not complete.
+This document describes the **current** healer and the target engine. Phases 10–11 are not complete.
 
 ## Current behavior (honest)
 

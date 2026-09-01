@@ -35,6 +35,6 @@ These are not implemented. Do not mark them complete.
 
 ## Explicitly not done / not copied
 
-- The Jiten20 sample SauceDemo tests, page objects, and `.github/agents/*.md` files were **not** copied into this product
 - There is **no chatbot** that generates tests from free-form chat
 - Default-branch commits are **not** performed
+- Demo-app page objects and hardcoded demo credentials are **not** the product source of truth
