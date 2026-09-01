@@ -93,13 +93,13 @@ See also [`skills/completed-work.md`](skills/completed-work.md).
 - Asynchronous explore → plan → validate workflow (`ai-workflow` queue)
 - Playwright explorer with per-job Chromium: snapshot, click/fill, optional authenticated crawl, action log
 - Scenario classification: VERIFIED / NEEDS_REVIEW / UNSUPPORTED
-- Human approval for plans, scenarios, and healing
+- Human approval for plans, scenarios, healing, and git publish
 - Playwright test generation (`pages/`, `fixtures/`, `test-data/`, `tests/`) written to a workspace and compile-checked
-- Generated test review, optional GitHub PR, and execution of **those generated files**
-- Failure analysis + healing history + approved re-run
+- Generated test review, stored workspace diff, feature-branch PR after approval, and execution of **those generated files**
+- Failure analysis + healing history + approved re-run (feature-branch PR when a token exists)
 - QE dashboard, coverage, and AI activity audit log
-- Additive database migrations for AI QE schema, scenario evidence refs, and generated-test compile/execution status
-- Unit tests for planner, validator, generator, healer, adapters, explorer (including real Chromium), generated-test runner, GitHub parsing, and ownership checks
+- Additive database migrations for AI QE schema, scenario evidence refs, generated-test compile/execution status, and workspace git diff
+- Unit tests for planner, validator, generator, healer, adapters, explorer (including real Chromium), generated-test runner, workspace diffs, feature-branch git guards, and ownership checks
 
 ## Partially Completed
 
@@ -107,7 +107,7 @@ See also [`skills/completed-work.md`](skills/completed-work.md).
 |---------|--------|------------|--------------|--------------|
 | Playwright MCP stdio | Isolated stub | Optional `PlaywrightMcpClient`; default exploration uses Playwright Chromium | Process pooling, robust JSON-RPC | `BROWSER_AUTOMATION_BACKEND=mcp` throws; do not treat MCP as working |
 | S3 artifact uploads | Report dirs detected | Local evidence screenshots under `ARTIFACT_DIR` | S3 upload + signed URLs | `uploadReport()` still returns null |
-| GitHub PRs for generated tests | API + UI | Feature branch + PR when a token exists | OAuth app, review UX | No token → PR creation fails |
+| GitHub PRs for generated tests | Diff + approval | Feature-branch PR after git/heal approval when a token exists; dashboard-only without one | OAuth app, inline review comments | Head cannot be `main` |
 | AI usage billing | Limits enforced in API | Planning/healing/exploration counters | Stripe meters | Stripe still run-centric |
 | Token encryption | Not in logs | Tokens passed only into the owning job | Encrypt at rest | Plaintext DB columns |
 | Org tenancy | User + project checks | Cross-user QE records are rejected | Organization model | Single-user projects |
@@ -123,6 +123,7 @@ See also [`skills/completed-work.md`](skills/completed-work.md).
 - OpenAPI spec
 - Jira import, org RBAC, WebSockets
 - Additional generator adapters beyond Playwright
+- GitHub Actions quality gate on generated workspaces
 - Cluster-level browser sandboxing
 - Email verification / SendGrid
 
@@ -132,7 +133,7 @@ Do not treat these as done. Details: [`skills/remaining-work.md`](skills/remaini
 
 - Without `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`, planning uses the heuristic provider (evidence-based, not LLM-creative).
 - Application exploration requires a reachable `applicationUrl` from the AI worker. Login-walled apps also need `TEST_USERNAME` / `TEST_PASSWORD` (or APP_/E2E_/LOGIN_ equivalents) on the project.
-- Generated tests are stored in the database until a human opens a PR; they are not silently committed. They are not yet compiled or executed as those files.
+- Generated tests are stored in the database with a workspace diff. Publishing requires approval and a GitHub token; without a token they stay in the dashboard. They are never committed to `main`.
 - Unsupported scenarios cannot be approved for generation.
 - Multi-framework AI generation is not implemented; only Playwright generation is first-class.
 - Local artifacts are not yet served through an authenticated download API.

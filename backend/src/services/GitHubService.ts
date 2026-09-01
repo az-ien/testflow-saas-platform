@@ -1,7 +1,8 @@
 import axios from 'axios';
 import { logger } from '../config/logger';
-import { AppError } from '../middleware/errorHandler';
+import { AppError, ValidationError } from '../middleware/errorHandler';
 import { GeneratedFile, RepoInventory } from '../ai/types';
+import { assertFeatureBranch, normalizeRef } from '../ai/git/featureBranch';
 
 export interface GitHubIssue {
   number: number;
@@ -89,6 +90,25 @@ export class GitHubService {
     return inventory;
   }
 
+  async fetchFile(repoUrl: string, token: string, path: string, ref: string): Promise<string | null> {
+    const parsed = parseGitHubRepo(repoUrl);
+    if (!parsed) return null;
+    try {
+      const { data } = await axios.get(
+        `https://api.github.com/repos/${parsed.owner}/${parsed.repo}/contents/${path.split('/').map(encodeURIComponent).join('/')}`,
+        { headers: headers(token), params: { ref }, timeout: 20000 }
+      );
+      if (Array.isArray(data) || data?.type !== 'file' || typeof data.content !== 'string') {
+        return null;
+      }
+      return Buffer.from(String(data.content).replace(/\n/g, ''), 'base64').toString('utf8');
+    } catch (err: any) {
+      if (err.response?.status === 404) return null;
+      logger.warn('GitHub file fetch failed; treating path as added', { path, error: err.message });
+      return null;
+    }
+  }
+
   async createPullRequest(input: {
     repoUrl: string;
     token: string;
@@ -98,6 +118,8 @@ export class GitHubService {
     body: string;
     files: GeneratedFile[];
   }): Promise<{ pullRequestUrl: string; branchName: string }> {
+    assertFeatureBranch(input.branchName, input.baseBranch);
+
     const parsed = parseGitHubRepo(input.repoUrl);
     if (!parsed) throw new AppError('Project repository is not a GitHub URL', 422);
 
@@ -106,6 +128,12 @@ export class GitHubService {
       headers: headers(input.token),
       timeout: 30000,
     });
+
+    const { data: repo } = await api.get('');
+    const defaultBranch = normalizeRef(repo?.default_branch);
+    if (defaultBranch && normalizeRef(input.branchName).toLowerCase() === defaultBranch.toLowerCase()) {
+      throw new ValidationError(`Cannot open a pull request from the default branch (${defaultBranch})`);
+    }
 
     const { data: baseRef } = await api.get(`/git/ref/heads/${input.baseBranch}`);
     const baseSha = baseRef.object.sha as string;

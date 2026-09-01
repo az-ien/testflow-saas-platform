@@ -18,10 +18,10 @@ This document is the architecture comparison between TestFlow **today** and the 
 | Execution | Generated workspace run with COMPILES / EXECUTED / PASSED / FAILED; customer-repo worker unchanged | Same | **Phase 8 done** for generated Playwright files. |
 | Healer | Reproduce in Chromium, patch observed locators, isolation rerun, approval before apply | Same | **Phases 10–11 done** for generated Playwright files. |
 | MCP | Optional stdio stub, default off | Optional backend behind `BrowserAutomationInterface` | Do not couple the SaaS to VS Code/Copilot MCP. |
-| GitHub | Issue import + optional feature-branch PR | Workspace diff → approval → feature-branch PR | Never commit `main`. |
+| GitHub | Issue import + workspace diff → approval → feature-branch PR | Same; never `main` | **Phase 9 done.** |
 | POM / fixtures / test-data | Workspace TypeScript from discovered locators (also stored in JSONB) | Same | Files also persist for PR review. |
 
-Honest summary: **explore, plan, validate, generate, execute generated Playwright files, and browser-heal those files are in place.** Customer-repo source healing and workspace git-as-default remain thinner.
+Honest summary: **explore, plan, validate, generate, execute generated Playwright files, browser-heal those files, and publish via stored workspace diff + approval + feature-branch PR are in place.** Customer-repo source healing remains thinner.
 
 ---
 
@@ -45,7 +45,9 @@ Job chain already implemented in `backend/src/workers/processors.ts`:
 ```text
 EXPLORE_APPLICATION → PLAN_TEST → VALIDATE_SCENARIOS
         → human approval (WAIT_FOR_APPROVAL)
-        → GENERATE_TEST (workspace + compile)
+        → GENERATE_TEST (workspace + compile + git diff)
+        → human git-publish approval (token present)
+        → feature-branch PR (never `main`)
         → EXECUTE_GENERATED_TEST (generated files)
         → ANALYZE_FAILURE (browser reproduce) → HEAL_TEST → RE_RUN_TEST
 ```
@@ -67,10 +69,10 @@ Agent folders already exist:
 
 ## What is missing (engine depth)
 
-1. **Workspace git flow** — generate → run → diff → approval → feature-branch PR. Never silent `main`.
-2. **Optional MCP backend** — Agent → `BrowserAutomationInterface` → Playwright or future MCP, without coupling the SaaS to an IDE MCP session.
-3. **Full SaaS-path smoke** — dashboard click-through of requirement → explore → approve → generate → execute → heal still needs a live stack; engine unit/integration tests cover generate/run/heal.
-4. **Customer-repo source healing** — connected-repo failures are classified from logs + a live page; only generated Playwright files are patched.
+1. **Optional MCP backend** — Agent → `BrowserAutomationInterface` → Playwright or future MCP, without coupling the SaaS to an IDE MCP session.
+2. **Full SaaS-path smoke** — dashboard click-through of requirement → explore → approve → generate → execute → heal still needs a live stack; engine unit/integration tests cover generate/run/heal/git.
+3. **Customer-repo source healing** — connected-repo failures are classified from logs + a live page; only generated Playwright files are patched.
+4. **CI quality gate on generated workspaces** — GitHub Actions report/trace upload after a feature-branch PR.
 
 ---
 
@@ -83,7 +85,7 @@ Agent folders already exist:
 | Human review before generation | Keep dashboard approvals |
 | POM + fixtures + test-data + tests | Generator target layout, written to a workspace |
 | Healer must not weaken assertions | Keep `preserveAssertions`; enforce in healing validation |
-| Feature-branch git, not `main` | Existing `GitHubService.createPullRequest` |
+| Feature-branch git, not `main` | Stored `workspaceDiff` + git publish approval + `GitHubService.createPullRequest` |
 | Playwright as the deep path | Keep other frameworks for **execution** only |
 
 ---
@@ -121,7 +123,7 @@ Do not implement every phase at once.
 | **6** | Human approval | Already present; expose classification rationale |
 | **7** | Real Playwright generation | Valid files, discovered selectors only — **done** |
 | **8** | Real execution of **generated** tests | GENERATED/COMPILES/EXECUTED/PASSED/FAILED — **done** |
-| **9** | Git/GitHub | Workspace diff → approval → feature-branch PR |
+| **9** | Git/GitHub | Workspace diff → approval → feature-branch PR — **done** |
 | **10** | Browser failure analysis | Reproduce with Playwright — **done** for generated tests |
 | **11** | Safe healing | Patch + isolation rerun + approval; never drop assertions — **done** for generated tests |
 | **12** | Hardening and docs | E2E smoke + limitation list |
@@ -141,5 +143,6 @@ Do not implement every phase at once.
 ## Known limitations (current)
 
 - Customer-repo test **source** is not patched; only generated Playwright workspaces are.
+- Without a GitHub token, generated files stay in the dashboard (`gitStatus=unavailable`); they are never pushed.
 - Playwright MCP stdio is experimental and is **not** the default exploration backend.
 - Heuristic planner still contains some cart/product keyword bias; it is not a demo-app-only architecture, but it is not fully generic yet.

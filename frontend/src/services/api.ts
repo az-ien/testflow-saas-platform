@@ -119,6 +119,7 @@ export const approvalsAPI = {
   decidePlan: (id: string, data: any) => api.post(`/approvals/plans/${id}`, data),
   decideScenario: (id: string, data: any) => api.post(`/approvals/scenarios/${id}`, data),
   decideHealing: (id: string, data: any) => api.post(`/approvals/healing/${id}`, data),
+  decideGeneratedTest: (id: string, data: any) => api.post(`/approvals/generated-tests/${id}`, data),
 };
 
 export const generatedTestsAPI = {

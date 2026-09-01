@@ -20,7 +20,7 @@ Isolation rerun of the patched workspace
         ↓
 Human approval
         ↓
-Apply to GeneratedTest workspace (optional feature-branch PR)
+Apply to GeneratedTest workspace (store diff; feature-branch PR if a token exists)
         ↓
 RE_RUN_TEST — verified only if that rerun passes
 ```
@@ -37,4 +37,4 @@ The healer must never “fix” a test by:
 - Adding `waitForTimeout`
 - Changing expected behaviour only to make the test pass
 
-Approved healing may open a **feature-branch** pull request. It never writes to `main`.
+Approved healing stores a workspace diff. If the project has a GitHub token, TestFlow opens a **feature-branch** pull request (heal approval is git approval). Without a token, files stay in the dashboard. It never writes to `main`.

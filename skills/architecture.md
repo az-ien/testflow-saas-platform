@@ -80,7 +80,7 @@ Every AI write is also recorded in `ai_activities` and `workflow_jobs` with `use
 - AI processors re-check `userId` + `projectId` before mutating.
 - Explorer workspaces and screenshots are stored under `{ARTIFACT_DIR}/{userId}/{projectId}/{correlationId}`.
 - Customer repos are still cloned into `tmpdir/testflow-{runId}` and deleted after the run.
-- Opening a GitHub PR requires an explicit action and a repo token. Default branch writes are not performed.
+- Opening a GitHub PR requires git publish approval (or heal approval) and a repo token. Default branch writes are not performed.
 
 ## Migration matrix
 

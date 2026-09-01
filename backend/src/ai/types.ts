@@ -32,6 +32,18 @@ export type CompileStatus = 'pending' | 'compiles' | 'failed';
 
 export type ExecutionStatus = 'pending' | 'queued' | 'running' | 'passed' | 'failed' | 'error';
 
+export type GitPublishStatus = 'none' | 'awaiting_approval' | 'pr_opened' | 'unavailable' | 'rejected';
+
+export type WorkspaceChange = 'added' | 'modified' | 'unchanged';
+
+export interface WorkspaceFileDiff {
+  path: string;
+  change: WorkspaceChange;
+  before?: string | null;
+  after: string;
+  patch: string;
+}
+
 export interface ScenarioStep {
   order: number;
   action: string;
