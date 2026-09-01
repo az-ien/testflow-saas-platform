@@ -171,6 +171,9 @@ export class GeneratedTestRunner {
       ...this.compactEnv(extraEnv),
       CI: '1',
     };
+    delete env.JEST_WORKER_ID;
+    delete env.JEST_WORKER_PATH;
+    delete env.JEST;
 
     return new Promise((resolve) => {
       const child = spawn(command, argv, {

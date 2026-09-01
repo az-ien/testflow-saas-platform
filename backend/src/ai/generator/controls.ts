@@ -99,14 +99,14 @@ export const playwrightLocatorExpr = (control: DiscoveredControl): string => {
   switch (control.kind) {
     case 'testid': {
       const selector = `[data-testid="${escapeAttr(control.value)}"], [data-test="${escapeAttr(control.value)}"]`;
-      return `page.locator(${JSON.stringify(selector)})`;
+      return `page.locator('${selector.replace(/'/g, "\\'")}')`;
     }
     case 'selector':
-      return `page.locator(${JSON.stringify(control.value)})`;
+      return `page.locator('${control.value.replace(/'/g, "\\'")}')`;
     case 'id':
-      return `page.locator(${JSON.stringify(`#${control.value}`)})`;
+      return `page.locator('#${control.value.replace(/'/g, "\\'")}')`;
     case 'name':
-      return `page.locator(${JSON.stringify(`[name="${escapeAttr(control.value)}"]`)})`;
+      return `page.locator('[name="${escapeAttr(control.value)}"]')`;
     case 'text':
       return `page.getByText(${JSON.stringify(control.value)})`;
     case 'role':

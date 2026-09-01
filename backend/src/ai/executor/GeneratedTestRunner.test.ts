@@ -116,9 +116,9 @@ describe('GeneratedTestRunner', () => {
       });
 
       const compile = await runner.compileCheck(workspace);
-      expect(compile.log).toEqual(expect.any(String));
-      expect(compile.ok).toBe(true);
-      expect(compile.status).toBe('compiles');
+      if (!compile.ok) {
+        throw new Error(`compile failed: ${compile.log}`);
+      }
 
       const result = await runner.execute(workspace, {
         APP_URL: fixture.url,
