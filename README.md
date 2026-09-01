@@ -247,7 +247,7 @@ Existing `POST /api/runs` still queues isolated test execution.
 
 | File | Purpose |
 |------|---------|
-| `SKILLS.md` | Coding standards and tracker |
+| `SKILLS.md` | Coding standards, tracker, and **mandatory branch + PR policy** |
 | `skills/` | Living implementation knowledge |
 | `docs/QE_ENGINE_PLAN.md` | Current vs target QE engine |
 | `docs/AGENT_ARCHITECTURE.md` | Agent split and browser interface |
