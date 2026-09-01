@@ -47,8 +47,8 @@ AI providers are configurable via `AI_PROVIDER`, `OPENAI_API_KEY`, and `ANTHROPI
 | `VALIDATE_SCENARIOS` | VERIFIED / NEEDS_REVIEW / UNSUPPORTED |
 | `GENERATE_TEST` | Playwright workspace + compile check for approved scenarios |
 | `EXECUTE_GENERATED_TEST` | Run the generated Playwright files |
-| `ANALYZE_FAILURE` | Healer analysis of a failed run |
-| `HEAL_TEST` | Apply approved fix policy (PR, never silent main) |
+| `ANALYZE_FAILURE` | Reproduce in a browser, classify, propose an assertion-safe patch |
+| `HEAL_TEST` | Apply approved generated-file patch (optional feature-branch PR, never silent main) |
 | `RE_RUN_TEST` | Re-run generated files, or enqueue customer-repo execution on `test-runs` |
 
 `WAIT_FOR_APPROVAL` is a **plan/healing status**, not a processor. The chain stops until a human decision.

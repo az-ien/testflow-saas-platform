@@ -41,9 +41,14 @@ export class GeneratedTestRunner {
     projectId: string;
     generatedTestId: string;
     files: GeneratedFile[];
+    workspaceDir?: string;
   }): Promise<string> {
-    const workspaceDir = this.workspacePath(input);
-    await writeGeneratedWorkspace(workspaceDir, input.files || []);
+    const workspaceDir = input.workspaceDir || this.workspacePath(input);
+    return this.materializeAt(workspaceDir, input.files || []);
+  }
+
+  async materializeAt(workspaceDir: string, files: GeneratedFile[]): Promise<string> {
+    await writeGeneratedWorkspace(workspaceDir, files);
     await linkWorkspaceNodeModules(workspaceDir);
     return workspaceDir;
   }

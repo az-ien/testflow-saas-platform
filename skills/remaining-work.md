@@ -4,10 +4,9 @@ These are not implemented. Do not mark them complete.
 
 ## High priority
 
-- Browser-based failure analysis and safe healing with rerun (Phases 10–11)
 - Authenticated artifact download API (screenshots/traces scoped by user/project)
 - Encrypt repository tokens and environment variables at rest
-- Backend/API integration tests against PostgreSQL (Jest currently covers AI units + explorer browser tests)
+- Backend/API integration tests against PostgreSQL (Jest currently covers AI units + explorer/generator/healer browser tests)
 - CI pipeline (GitHub Actions) for backend tests, frontend build, and migrations
 - OpenAPI/Swagger for the new QE routes
 - Per-tenant AI provider keys (today: process environment)
@@ -18,7 +17,7 @@ These are not implemented. Do not mark them complete.
 - Organization/team model and RBAC beyond user ownership
 - WebSocket live updates (dashboard still polls/refreshes)
 - Additional agentic framework adapters (Cypress, Selenium, pytest) — execution already works, generation does not
-- Controlled locator self-healing that writes a PR automatically after approval (healing currently stores analysis and optional PR files)
+- Controlled locator self-healing that auto-opens a GitHub PR (`autoCreatePullRequest` + token still required)
 - Coverage analytics beyond requirement/scenario/generated-test counts
 - Email verification and SendGrid (flags exist)
 

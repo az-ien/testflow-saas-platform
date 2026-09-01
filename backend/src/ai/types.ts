@@ -87,6 +87,9 @@ export interface HealingProposal {
   files: GeneratedFile[];
   confidence: number;
   preserveAssertions: boolean;
+  reproduced?: boolean;
+  isolationVerified?: boolean;
+  screenshotPath?: string;
 }
 
 export interface InteractiveElement {

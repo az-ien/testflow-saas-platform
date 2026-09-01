@@ -17,8 +17,8 @@ Each agent is a TypeScript service invoked by a BullMQ job on the `ai-workflow` 
 | Validator | `VALIDATE_SCENARIOS` | Classify VERIFIED / NEEDS_REVIEW / UNSUPPORTED | Upgrade UNSUPPORTED to VERIFIED |
 | Generator | `GENERATE_TEST` | Produce Playwright files for **approved** scenarios | Generate for unsupported or unapproved rows |
 | Executor | `EXECUTE_GENERATED_TEST` + existing `test-runs` worker | Run **generated** Playwright files in isolation; keep customer-repo runs | Silently write to `main` |
-| Analyzer | `ANALYZE_FAILURE` | Classify a failure from logs/artifacts | Change tests |
-| Healer | `HEAL_TEST` | Propose a patch that preserves assertions | Remove or weaken assertions |
+| Analyzer | `ANALYZE_FAILURE` | Reproduce in a browser, classify, propose an assertion-safe patch | Weaken tests |
+| Healer | `HEAL_TEST` | Apply an approved patch to the generated workspace, optional feature-branch PR | Remove assertions or write `main` |
 
 Human approval sits between validate and generate, and again before a healed patch becomes a repository change.
 
@@ -71,8 +71,9 @@ Failure → Analyzer → HealingAttempt → approval → isolated re-run
 - Evidence is stored in PostgreSQL (`scenario_evidence`) and screenshots under `ARTIFACT_DIR`.
 - Planner emits scenarios from observed controls; unmatched or invented features stay review/unsupported (Phase 4).
 - Validator requires observed controls; a start URL is not enough (Phase 5).
-- Approval workflow, generated Playwright workspace compile/run, and multi-framework **execution** of connected repos.
+- Approval workflow, generated Playwright workspace compile/run, and browser healing of generated files.
 
 ## What is still thinner than the target engine
 
-- Healer does not reopen a browser (Phase 10–11).
+- Customer-repo **source** healing (connected-repo runs are classified, not patched).
+- Workspace git-as-default (feature-branch PR is still optional and token-gated).

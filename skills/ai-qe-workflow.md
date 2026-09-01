@@ -34,7 +34,9 @@ Review generated files / optional feature-branch PR
 EXECUTE_GENERATED_TEST  (runs the generated files)
     ↓
 PASS → dashboard
-FAIL → ANALYZE_FAILURE → healing proposal → approval → HEAL_TEST → RE_RUN_TEST
+FAIL → ANALYZE_FAILURE (browser reproduce + isolation rerun)
+    ↓
+Healing proposal → human approval → HEAL_TEST (apply generated files) → RE_RUN_TEST
 ```
 
 ## Classification rules

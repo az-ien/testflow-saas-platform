@@ -26,7 +26,7 @@ Only items that are implemented in this repository and covered by code, APIs, or
 | Hallucination validator | `backend/src/ai/validator/` | VERIFIED / NEEDS_REVIEW / UNSUPPORTED; start URL is not control proof |
 | AI generator | `backend/src/ai/generator/` + Playwright adapter | Approved scenarios → workspace Playwright files + compile check |
 | Generated test runner | `backend/src/ai/executor/GeneratedTestRunner.ts` | `playwright test --list` (COMPILES) and `playwright test` (PASSED/FAILED) on generated files |
-| AI healer | `backend/src/ai/healer/` | Failure analysis, no assertion deletion |
+| AI healer | `backend/src/ai/healer/` | Browser reproduce, assertion-safe locator patch, isolation rerun, approval before apply |
 | Configurable AI providers | `backend/src/ai/providers/` | heuristic, OpenAI-compatible, Anthropic |
 | Playwright application explorer | `backend/src/ai/browser/` | Real Chromium: navigate, snapshot, fill/click login when credentials exist, same-origin crawl, action log |
 | Evidence persistence | `ScenarioEvidence` + artifact dir | URLs, DOM, screenshots, console, network |
@@ -58,7 +58,7 @@ Only items that are implemented in this repository and covered by code, APIs, or
 | Review/approve | Completed |
 | Generate automated tests | Completed — Playwright layout on disk + JSONB, compile-checked (Phase 7) |
 | Execute in isolated workers | Completed for **generated** Playwright files (Phase 8) and connected-repo tests |
-| Failed tests analyzed | Partial — log classification only (Phase 10) |
-| Propose healing fix | Partial — no browser reproduce/rerun validation (Phase 11) |
-| Approve fix and re-run | Completed |
+| Failed tests analyzed | Completed for generated Playwright files (Phase 10). Connected-repo failures are still log + live page, not source patches. |
+| Propose healing fix | Completed for generated files (Phase 11). Isolation rerun must pass for high confidence; assertions cannot be dropped. |
+| Approve fix and re-run | Completed — apply to generated workspace, then `RE_RUN_TEST`; verified only if that run passes |
 | Traceability visible | Completed (coverage + scenario/plan/generated-test pages) |

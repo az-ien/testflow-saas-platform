@@ -1,13 +1,17 @@
 import { Job } from 'bullmq';
+import path from 'path';
 import { getAiProvider } from '../ai/providers';
 import { PlannerService } from '../ai/planner/PlannerService';
 import { ValidatorService } from '../ai/validator/ValidatorService';
 import { GeneratorService } from '../ai/generator/GeneratorService';
 import { HealerService } from '../ai/healer/HealerService';
+import { FailureReproducer } from '../ai/healer/FailureReproducer';
+import { assertionsPreserved } from '../ai/healer/assertions';
 import { ExplorationResult } from '../ai/types';
 import { PlaywrightExplorer } from '../ai/browser/PlaywrightExplorer';
 import { extractExploreCredentials } from '../ai/browser/credentials';
 import { GeneratedTestRunner } from '../ai/executor/GeneratedTestRunner';
+import { artifactRoot } from '../ai/generator/workspace';
 import { toEvidenceRecords } from '../mcp/playwright/EvidenceCollector';
 import { Project } from '../models/Project';
 import { Requirement } from '../models/Requirement';
@@ -35,6 +39,7 @@ const generator = new GeneratorService(provider);
 const healer = new HealerService(provider);
 const explorer = new PlaywrightExplorer();
 const generatedRunner = new GeneratedTestRunner();
+const reproducer = new FailureReproducer();
 
 const assertOwnedRecord = <T extends { userId: string }>(
   entity: T | null,
@@ -542,7 +547,18 @@ const executeGeneratedTest = async (job: AiWorkflowJobData): Promise<void> => {
       workspacePath,
       lastRunId: run.id,
     });
-    await maybeAnalyzeFailure(run);
+    if (run.healingAttemptId) {
+      await HealingAttempt.update(
+        {
+          status: result.status === 'passed' ? 'verified' : 'failed',
+          rerunId: run.id,
+        },
+        { where: { id: run.healingAttemptId, userId: job.userId, projectId: job.projectId } }
+      );
+    }
+    if (result.status === 'failed' && !run.healingAttemptId) {
+      await maybeAnalyzeFailure(run);
+    }
   } catch (err: any) {
     const completedAt = new Date();
     await run.update({
@@ -562,14 +578,65 @@ const executeGeneratedTest = async (job: AiWorkflowJobData): Promise<void> => {
 
 const analyzeFailure = async (job: AiWorkflowJobData): Promise<void> => {
   const run = assertOwnedProjectRecord(await TestRun.findByPk(job.testRunId), job, 'Test run');
+  const project = assertProject(await Project.findByPk(job.projectId), job);
+  const generated = run.generatedTestId
+    ? assertOwnedProjectRecord(await GeneratedTest.findByPk(run.generatedTestId), job, 'Generated test')
+    : null;
   const failed = (run.results || []).filter((result) => result.status === 'failed');
-  const proposal = await healer.analyze({
-    title: failed[0]?.title,
-    error: failed.map((item) => item.error).filter(Boolean).join('\n') || 'Test run failed',
+  const error = failed.map((item) => item.error).filter(Boolean).join('\n') || 'Test run failed';
+
+  const reproduction = await reproducer.reproduce({
+    startUrl: project.applicationUrl,
+    error,
     logs: run.logs || [],
-    screenshotPath: failed[0]?.screenshot,
-    videoPath: failed[0]?.video,
+    credentials: extractExploreCredentials(project.environmentVariables),
+    artifactDir: process.env.ARTIFACT_DIR || artifactRoot(),
+    userId: job.userId,
+    projectId: job.projectId,
+    correlationId: job.correlationId || run.id,
   });
+
+  let proposal = await healer.analyze({
+    title: failed[0]?.title,
+    error,
+    logs: run.logs || [],
+    screenshotPath: reproduction.screenshotPath || failed[0]?.screenshot,
+    videoPath: failed[0]?.video,
+    consoleErrors: reproduction.consoleMessages,
+    networkErrors: reproduction.networkErrors,
+    files: generated?.files || [],
+    reproduction,
+  });
+
+  if (proposal.files.length && generated?.files?.length) {
+    const issues = assertionsPreserved(generated.files, proposal.files);
+    if (issues.length) {
+      proposal = {
+        ...proposal,
+        files: [],
+        preserveAssertions: true,
+        proposedFix: `Rejected unsafe patch: ${issues.join('; ')}`,
+        confidence: Math.min(proposal.confidence, 0.4),
+      };
+    } else {
+      const previewDir = path.join(
+        artifactRoot(),
+        job.userId,
+        job.projectId,
+        'healing-preview',
+        job.correlationId || run.id
+      );
+      const preview = await generatedRunner.materializeAt(previewDir, proposal.files);
+      const isolated = await generatedRunner.execute(preview, executionEnv(project));
+      proposal.isolationVerified = isolated.status === 'passed';
+      proposal.confidence = isolated.status === 'passed'
+        ? Math.max(proposal.confidence, 0.9)
+        : Math.min(proposal.confidence, 0.6);
+      if (isolated.status !== 'passed') {
+        proposal.proposedFix = `${proposal.proposedFix} Isolation rerun still failed; review before applying.`;
+      }
+    }
+  }
 
   const attempt = await HealingAttempt.create({
     projectId: job.projectId,
@@ -595,7 +662,12 @@ const analyzeFailure = async (job: AiWorkflowJobData): Promise<void> => {
     entityType: 'healing_attempt',
     entityId: attempt.id,
     correlationId: job.correlationId,
-    details: { category: proposal.category, confidence: proposal.confidence },
+    details: {
+      category: proposal.category,
+      confidence: proposal.confidence,
+      reproduced: proposal.reproduced || false,
+      isolationVerified: proposal.isolationVerified || false,
+    },
   });
 };
 
@@ -606,6 +678,35 @@ const healTest = async (job: AiWorkflowJobData): Promise<void> => {
   }
 
   const project = assertProject(await Project.findByPk(job.projectId), job);
+
+  if (attempt.files.length && attempt.generatedTestId) {
+    const generated = assertOwnedProjectRecord(
+      await GeneratedTest.findByPk(attempt.generatedTestId),
+      job,
+      'Generated test'
+    );
+    const issues = assertionsPreserved(generated.files || [], attempt.files);
+    if (issues.length) {
+      throw new Error(`Refusing to apply healing patch: ${issues.join('; ')}`);
+    }
+    await generated.update({ files: attempt.files, compileStatus: 'pending' });
+    const workspacePath = await generatedRunner.materialize({
+      userId: job.userId,
+      projectId: job.projectId,
+      generatedTestId: generated.id,
+      files: attempt.files,
+    });
+    const compile = await generatedRunner.compileCheck(workspacePath);
+    await generated.update({
+      workspacePath,
+      compileStatus: compile.status,
+      compileLog: compile.log,
+    });
+    if (!compile.ok) {
+      await attempt.update({ status: 'failed', summary: compile.log });
+      throw new Error(compile.log || 'Healed Playwright files did not compile');
+    }
+  }
 
   if (project.autoCreatePullRequest && project.repoUrl && project.repoAccessToken && attempt.files.length) {
     const pr = await githubService.createPullRequest({
@@ -629,6 +730,7 @@ const healTest = async (job: AiWorkflowJobData): Promise<void> => {
     correlationId: job.correlationId,
     testRunId: attempt.testRunId,
     healingAttemptId: attempt.id,
+    generatedTestId: attempt.generatedTestId || undefined,
     entityType: 'healing_attempt',
     entityId: attempt.id,
   });
@@ -688,7 +790,7 @@ const rerunTest = async (job: AiWorkflowJobData): Promise<void> => {
 
   if (job.healingAttemptId) {
     await HealingAttempt.update(
-      { rerunId: run.id, status: 'verified' },
+      { rerunId: run.id },
       { where: { id: job.healingAttemptId, userId: job.userId, projectId: job.projectId } }
     );
   }
