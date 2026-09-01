@@ -16,7 +16,7 @@ Covered now:
 - Hallucination classification; start-URL refs are not enough (`classification.test.ts`)
 - Evidence matching for locators (`backend/src/ai/evidence/matching.test.ts`)
 - Playwright generation + workspace layout (`GeneratorService.test.ts`, `PlaywrightAdapter.test.ts`)
-- Generated-file compile and run against a local HTML fixture (`GeneratedTestRunner.test.ts`) — requires Playwright browsers
+- Generated-file compile and run against a local HTML fixture (`GeneratedTestRunner.test.ts`) — requires Playwright browsers (`npx playwright install chromium`)
 - Healer categories and assertion preservation (`HealerService.test.ts`)
 - Framework adapter defaulting to Playwright (`FrameworkAdapter.test.ts`)
 - GitHub URL parsing (`GitHubService.test.ts`)
