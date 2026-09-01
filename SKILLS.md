@@ -4,8 +4,8 @@
 >
 > Every AI agent (Cursor, Copilot, Gemini, Claude, etc.) **MUST** read this file before making any code change. After completing work, the agent **MUST** update the relevant sections (especially §6 Implementation Tracker and §7 Change Log) to keep this document in sync with reality.
 >
-> **Last Updated:** 2026-08-31
-> **Updated By:** Codex
+> **Last Updated:** 2026-09-01
+> **Updated By:** Cursor Grok 4.6
 
 ---
 
@@ -26,12 +26,13 @@
 
 | Field | Value |
 |-------|-------|
-| **Name** | TestFlow — Test Execution SaaS Platform |
-| **Purpose** | Run Playwright, Cypress, Selenium, pytest, TestNG, Jest, and Mocha tests from external repositories via API. View results in a live dashboard. |
+| **Name** | TestFlow — AI Quality Engineering SaaS |
+| **Purpose** | Explore applications, create evidence-based scenarios, validate them, generate Playwright tests, execute them, and heal failures — using existing TestFlow SaaS infrastructure. |
 | **License** | MIT |
 | **Repo Root** | `testflow-saas-platform/` |
 | **Primary Language** | TypeScript (Node.js ≥ 20, TS 5.3) |
 | **Frontend Language** | TypeScript (React 18, Vite) |
+| **Knowledge base** | `skills/` (project status) + this file (coding standards) |
 
 ---
 
@@ -40,17 +41,17 @@
 ### 2.1 System Architecture
 
 ```
-┌─────────────┐     ┌────────────────┐     ┌─────────────────┐
-│   Frontend   │────▶│   Backend API  │────▶│   Redis + Queue │
-│  React/Vite  │     │  Express/TS    │     │   BullMQ        │
-│  Port 3000   │     │  Port 5000     │     │   Port 6379     │
-└─────────────┘     └────────────────┘     └────────┬────────┘
-                            │                        │
-                     ┌──────▼──────┐          ┌──────▼──────┐
-                     │  PostgreSQL │          │   Worker(s)  │
-                     │  Port 5432  │          │  Clone/Run   │
-                     └─────────────┘          └──────────────┘
+Frontend → Backend API → Redis/BullMQ (test-runs + ai-workflow)
+                ↓
+         PostgreSQL (SaaS + AI QE models)
+                ↓
+     AI worker (plan/explore/validate/generate/heal)
+     Test worker (clone/install/run/parse)
 ```
+
+AI services live in `backend/src/ai/{planner,validator,generator,healer}` with Playwright as the first-class agentic adapter. Do not add a chatbot as the product interface.
+
+Detailed status: `skills/architecture.md`.
 
 ### 2.2 Mandatory Tech Stack
 
@@ -61,7 +62,7 @@
 | **Auth** | JWT + API Key dual auth, bcryptjs | jsonwebtoken 9, bcryptjs 2 |
 | **Database** | PostgreSQL 15, Sequelize ORM | Sequelize 6 |
 | **Cache & Queue** | Redis 7, BullMQ | ioredis 5, BullMQ 5 |
-| **Worker** | Docker-based worker with Node.js, Playwright Chromium, Python/pytest, Java 17, Maven | — |
+| **Worker** | Docker-based workers: test executor + AI worker with Playwright Chromium | — |
 | **Billing** | Stripe (Checkout + Billing Portal) | stripe 14 |
 | **Monitoring** | Sentry, Winston with daily rotation | @sentry/node 7, winston 3 |
 | **Infrastructure** | Terraform (AWS VPC, RDS, S3) | — |
@@ -121,12 +122,12 @@
 
 - **Sequelize models** live in `backend/src/models/` and `workers/test-executor/src/models/`
 - **Associations** defined in `backend/src/models/index.ts`:
-  - User → Projects (one-to-many)
-  - User → Subscription (one-to-one)
-  - User → TestRuns (one-to-many)
-  - Project → TestRuns (one-to-many)
+  - User → Projects, Subscription, TestRuns, Requirements, TestPlans, Scenarios
+  - Requirement → TestPlan → Scenario → Evidence / Validation / GeneratedTest
+  - TestRun → HealingAttempt
 - **UUIDs** for all primary keys
 - **Development** uses `sequelize.sync()` — production must use migration files from `backend/migrations/`
+- Always scope QE queries by `userId` (and `projectId` when mutating workflow jobs)
 
 ### 3.5 External Test Execution Model
 
@@ -158,7 +159,8 @@ TestFlow is an **orchestration service** — it does not keep its own test suite
 ```
 testflow-saas-platform/
 ├── SKILLS.md                   ← THIS FILE — AI agents read & update
-├── README.md                   ← Public documentation
+├── skills/                     ← Living implementation knowledge
+├── README.md                   ← Public documentation / project status
 ├── .env.example                ← All env vars with descriptions
 ├── .gitignore
 ├── docker-compose.yml          ← Full local stack
@@ -169,11 +171,13 @@ testflow-saas-platform/
 │   │   ├── app.ts              ← Entry point & middleware chain
 │   │   ├── config/             ← database.ts, redis.ts, logger.ts
 │   │   ├── middleware/         ← auth.ts, errorHandler.ts
-│   │   ├── models/             ← User, Project, TestRun, Subscription, index.ts
-│   │   ├── routes/             ← auth, projects, runs, webhooks, subscriptions
-│   │   └── services/           ← AuthService.ts, RunQueue.ts
-│   ├── .sequelizerc            ← Sequelize CLI paths
-│   ├── config/                 ← Sequelize CLI config
+│   │   ├── ai/                 ← planner, validator, generator, healer, providers, adapters
+│   │   ├── mcp/playwright/     ← explorer + optional MCP client
+│   │   ├── orchestration/      ← AI workflow queue
+│   │   ├── workers/aiWorker.ts ← AI BullMQ consumer
+│   │   ├── models/             ← SaaS + AI QE models
+│   │   ├── routes/             ← REST endpoints including QE
+│   │   └── services/           ← Auth, RunQueue, GitHub, usage, access
 │   ├── migrations/             ← Production database migrations
 │   ├── Dockerfile
 │   └── package.json
@@ -187,7 +191,7 @@ testflow-saas-platform/
 │   │   ├── index.css           ← Tailwind base styles
 │   │   ├── features/           ← Redux slices: auth/, projects/, runs/
 │   │   ├── layouts/            ← DashboardLayout
-│   │   ├── pages/              ← All pages (*Page.tsx)
+│   │   ├── pages/              ← Dashboard + AI QE workflow pages
 │   │   └── services/           ← API client (axios)
 │   ├── Dockerfile
 │   ├── tailwind.config.js
@@ -196,7 +200,8 @@ testflow-saas-platform/
 │   └── package.json
 │
 ├── workers/
-│   └── test-executor/          ← BullMQ worker
+│   ├── test-executor/          ← BullMQ test execution worker
+│   └── ai-worker/Dockerfile    ← Playwright image running backend AI worker
 │       ├── src/
 │       │   ├── worker.ts       ← Job processor entry
 │       │   ├── TestExecutor.ts ← Clone → Install → Run → Parse
@@ -300,14 +305,26 @@ testflow-saas-platform/
 | React dashboard | `frontend/src/pages/` | Dashboard, Projects, Runs, Settings, Pricing, Login, Register |
 | Redux state management | `frontend/src/features/` | auth, projects, runs slices |
 | Terraform foundation | `terraform/main.tf` | AWS VPC, RDS PostgreSQL, S3, security groups |
+| AI QE models + migration | `backend/src/models/*`, `backend/migrations/20260901000000-create-ai-qe-schema.js` | Requirements through healing |
+| Planner / validator / generator / healer | `backend/src/ai/` | Heuristic + optional LLM |
+| Playwright explorer | `backend/src/mcp/playwright/` | Isolated Chromium; optional MCP client |
+| AI workflow queue | `backend/src/orchestration/` | EXPLORE, PLAN, VALIDATE, GENERATE, ANALYZE, HEAL, RE_RUN |
+| AI worker | `backend/src/workers/aiWorker.ts` | `ai-workflow` BullMQ consumer |
+| QE APIs | `backend/src/routes/{requirements,testPlans,scenarios,approvals,generatedTests,healing,qe}.ts` | Authenticated + ownership-checked |
+| AI QE frontend | `frontend/src/pages/*` | Workflow navigation |
+| skills/ knowledge base | `skills/` | Status docs for the next agent |
 
 ### 🔧 In Progress / Partially Implemented
 
 | Feature | Status | What Remains |
 |---------|--------|-------------|
-| S3 artifact uploads | Report dirs detected | Wire `uploadReport()` to actually upload to S3 and return signed URLs |
-| GitLab/Bitbucket/Azure DevOps webhooks | Metadata accepted | Build inbound trigger routes for these providers |
-| `pyproject.toml` support | Detection exists | Full package-manager install support needed |
+| S3 artifact uploads | Report dirs detected; local evidence screenshots stored | Wire `uploadReport()` to S3 and add authenticated download |
+| GitLab/Bitbucket/Azure DevOps webhooks | Metadata accepted | Build inbound trigger routes |
+| `pyproject.toml` support | Detection exists | Full package-manager install support |
+| Playwright MCP stdio | Client exists, explorer is default | Session pool and JSON-RPC hardening |
+| GitHub generated-test PRs | Service + UI | OAuth app; token always required |
+| Org tenancy | User+project isolation | Organization model |
+| Stripe AI meters | API usage counters | Stripe billing dimensions |
 
 ### ❌ Not Yet Started
 
@@ -317,12 +334,12 @@ testflow-saas-platform/
 | Terraform ECS/EKS deployment | MEDIUM | No compute provisioning |
 | Email verification flow | LOW | Feature flag exists (`FEATURE_EMAIL_VERIFICATION`) but not implemented |
 | SendGrid email integration | LOW | `.env.example` has `SENDGRID_API_KEY`; no email sending code exists yet |
-| Test suite for backend | HIGH | Jest configured but no tests written |
+| Backend API integration tests | HIGH | AI unit tests exist; Postgres/API tests do not |
 | Test suite for frontend | MEDIUM | No testing framework configured |
 | CI/CD pipeline | HIGH | No GitHub Actions / workflow files |
 | API documentation (OpenAPI/Swagger) | MEDIUM | No spec file |
 | WebSocket real-time updates | LOW | Dashboard currently polls |
-| Multi-tenancy isolation | LOW | Basic user scoping exists |
+| Organization tenancy | MEDIUM | User isolation exists; org model does not |
 
 ---
 
@@ -332,6 +349,7 @@ testflow-saas-platform/
 
 | Date | Agent | Files Changed | Summary |
 |------|-------|---------------|---------|
+| 2026-09-01 | Cursor Grok 4.6 | AI QE backend/frontend/workers/skills/README | Transformed TestFlow into an AI Quality Engineering SaaS while preserving existing SaaS infrastructure |
 | 2026-05-15 | Initial | `SKILLS.md` | Created SKILLS.md with full project standards and implementation tracker |
 | 2026-05-15 | Antigravity | `SKILLS.md`, `README.md` | Aligned both files: added orchestration model, dependency manifests, worker commands, webhook events, git conventions, and SendGrid to SKILLS; fixed bcryptjs, added SKILLS.md to project tree, and added AI agent note in README |
 | 2026-08-31 | Codex | `backend/src/app.ts`, `backend/src/routes/subscriptions.ts`, `backend/.sequelizerc`, `backend/config/config.js`, `backend/migrations/20260831000000-create-initial-schema.js`, `.env.example`, `README.md`, `SKILLS.md` | Hardened Stripe webhooks and added Sequelize CLI production migration config with the initial schema migration |

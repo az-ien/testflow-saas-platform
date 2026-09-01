@@ -30,18 +30,31 @@ router.post(
   '/',
   [
     body('name').trim().notEmpty().isLength({ max: 200 }),
-    body('repoUrl').isURL(),
-    body('repoProvider').isIn(['github', 'gitlab', 'bitbucket', 'azure_devops']),
-    body('framework').isIn(['playwright', 'cypress', 'selenium', 'pytest', 'testng', 'jest', 'mocha']),
+    body('repoUrl').optional({ checkFalsy: true }).isURL(),
+    body('applicationUrl').optional({ checkFalsy: true }).isURL(),
+    body('repoProvider').optional().isIn(['github', 'gitlab', 'bitbucket', 'azure_devops']),
+    body('framework').optional().isIn(['playwright', 'cypress', 'selenium', 'pytest', 'testng', 'jest', 'mocha']),
     body('repoBranch').optional().trim(),
     body('testPattern').optional().trim(),
     body('webhookUrl').optional().isURL(),
     body('repoAccessToken').optional().trim(),
+    body('approvalPolicy').optional().isIn(['always', 'verified_auto', 'manual_all']),
   ],
   validate,
   async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const project = await Project.create({ ...req.body, userId: req.user!.userId });
+      if (!req.body.repoUrl && !req.body.applicationUrl) {
+        res.status(422).json({ error: 'A repository URL or application URL is required' });
+        return;
+      }
+      const project = await Project.create({
+        ...req.body,
+        userId: req.user!.userId,
+        repoProvider: req.body.repoProvider || 'github',
+        framework: req.body.framework || 'playwright',
+        repoUrl: req.body.repoUrl || null,
+        applicationUrl: req.body.applicationUrl || null,
+      });
       res.status(201).json(project);
     } catch (err) { next(err); }
   }
@@ -67,6 +80,11 @@ router.patch('/:id',
     body('testPattern').optional().trim(),
     body('webhookUrl').optional().isURL(),
     body('isActive').optional().isBoolean(),
+    body('applicationUrl').optional({ checkFalsy: true }).isURL(),
+    body('approvalPolicy').optional().isIn(['always', 'verified_auto', 'manual_all']),
+    body('autoGenerateOnApprove').optional().isBoolean(),
+    body('autoCreatePullRequest').optional().isBoolean(),
+    body('autoHealOnFailure').optional().isBoolean(),
   ],
   validate,
   async (req: Request, res: Response, next: NextFunction) => {

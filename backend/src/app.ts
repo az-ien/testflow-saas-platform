@@ -11,6 +11,7 @@ import { logger } from './config/logger';
 import { connectDatabase } from './config/database';
 import { connectRedis } from './config/redis';
 import { errorHandler } from './middleware/errorHandler';
+import './models';
 
 // Routes
 import authRoutes from './routes/auth';
@@ -18,6 +19,13 @@ import projectRoutes from './routes/projects';
 import runRoutes from './routes/runs';
 import webhookRoutes from './routes/webhooks';
 import subscriptionRoutes from './routes/subscriptions';
+import requirementRoutes from './routes/requirements';
+import testPlanRoutes from './routes/testPlans';
+import scenarioRoutes from './routes/scenarios';
+import approvalRoutes from './routes/approvals';
+import generatedTestRoutes from './routes/generatedTests';
+import healingRoutes from './routes/healing';
+import qeRoutes from './routes/qe';
 
 dotenv.config();
 
@@ -94,6 +102,13 @@ app.use('/api/projects', projectRoutes);
 app.use('/api/runs', runRoutes);
 app.use('/api/webhooks', webhookRoutes);
 app.use('/api/subscriptions', subscriptionRoutes);
+app.use('/api/requirements', requirementRoutes);
+app.use('/api/test-plans', testPlanRoutes);
+app.use('/api/scenarios', scenarioRoutes);
+app.use('/api/approvals', approvalRoutes);
+app.use('/api/generated-tests', generatedTestRoutes);
+app.use('/api/healing', healingRoutes);
+app.use('/api/qe', qeRoutes);
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {

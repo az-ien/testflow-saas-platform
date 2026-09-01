@@ -73,7 +73,16 @@
   .badge-failed  { @apply text-xs font-medium px-2 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20; }
   .badge-queued  { @apply text-xs font-medium px-2 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20; }
   .badge-running { @apply text-xs font-medium px-2 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20; }
+  .badge-exploring { @apply text-xs font-medium px-2 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20; }
+  .badge-planning { @apply text-xs font-medium px-2 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20; }
+  .badge-validating { @apply text-xs font-medium px-2 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20; }
+  .badge-awaiting_approval { @apply text-xs font-medium px-2 py-1 rounded-full bg-blue-500/10 text-blue-400 border border-blue-500/20; }
+  .badge-approved { @apply text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20; }
+  .badge-generated { @apply text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20; }
   .badge-error   { @apply text-xs font-medium px-2 py-1 rounded-full bg-orange-500/10 text-orange-400 border border-orange-500/20; }
+  .badge-verified { @apply text-xs font-medium px-2 py-1 rounded-full bg-emerald-500/10 text-emerald-400 border border-emerald-500/20; }
+  .badge-review   { @apply text-xs font-medium px-2 py-1 rounded-full bg-amber-500/10 text-amber-400 border border-amber-500/20; }
+  .badge-unsupported { @apply text-xs font-medium px-2 py-1 rounded-full bg-red-500/10 text-red-400 border border-red-500/20; }
 
   .input {
     @apply w-full px-4 py-2.5 rounded-lg text-sm outline-none transition-all duration-200;

@@ -4,14 +4,22 @@ import { useAppDispatch, useAppSelector } from '../hooks';
 import { logout } from '../features/auth/authSlice';
 import {
   LayoutDashboard, FolderGit2, PlayCircle, Settings,
-  ChevronLeft, ChevronRight, LogOut, Zap, Bell, User
+  ChevronLeft, ChevronRight, LogOut, Zap, Bell,
+  ClipboardList, Brain, ListChecks, ShieldCheck, FileCode2, Sparkles, PieChart
 } from 'lucide-react';
 
 const NAV = [
-  { to: '/dashboard',          icon: LayoutDashboard, label: 'Dashboard',  end: true },
-  { to: '/dashboard/projects', icon: FolderGit2,      label: 'Projects' },
-  { to: '/dashboard/runs',     icon: PlayCircle,       label: 'Test Runs' },
-  { to: '/dashboard/settings', icon: Settings,         label: 'Settings' },
+  { to: '/dashboard',              icon: LayoutDashboard, label: 'Dashboard',  end: true },
+  { to: '/dashboard/projects',     icon: FolderGit2,      label: 'Projects' },
+  { to: '/dashboard/requirements', icon: ClipboardList,   label: 'Requirements' },
+  { to: '/dashboard/test-plans',   icon: Brain,           label: 'AI Test Plans' },
+  { to: '/dashboard/scenarios',    icon: ListChecks,      label: 'Scenarios' },
+  { to: '/dashboard/approvals',    icon: ShieldCheck,     label: 'Approvals' },
+  { to: '/dashboard/generated',    icon: FileCode2,       label: 'Generated Tests' },
+  { to: '/dashboard/runs',         icon: PlayCircle,      label: 'Test Runs' },
+  { to: '/dashboard/healing',      icon: Sparkles,        label: 'AI Healing' },
+  { to: '/dashboard/coverage',     icon: PieChart,        label: 'Coverage' },
+  { to: '/dashboard/settings',     icon: Settings,        label: 'Settings' },
 ];
 
 export default function DashboardLayout() {
@@ -45,7 +53,7 @@ export default function DashboardLayout() {
           {!collapsed && (
             <div>
               <span className="font-bold text-sm gradient-text">TestFlow</span>
-              <div className="text-xs text-muted">SaaS Platform</div>
+              <div className="text-xs text-muted">AI Quality Engineering</div>
             </div>
           )}
         </div>

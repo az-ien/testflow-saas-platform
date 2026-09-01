@@ -13,12 +13,19 @@ export type PlanId = 'free' | 'starter' | 'pro' | 'business' | 'enterprise';
 export type BillingInterval = 'monthly' | 'yearly';
 export type SubscriptionStatus = 'active' | 'past_due' | 'cancelled' | 'trialing' | 'paused';
 
-export const PLAN_LIMITS: Record<PlanId, { runs: number; parallel: number; price: number }> = {
-  free:       { runs: 50,     parallel: 1,  price: 0   },
-  starter:    { runs: 500,    parallel: 2,  price: 29  },
-  pro:        { runs: 5000,   parallel: 5,  price: 99  },
-  business:   { runs: 25000,  parallel: 20, price: 299 },
-  enterprise: { runs: 999999, parallel: 50, price: 0   }, // custom pricing
+export const PLAN_LIMITS: Record<PlanId, {
+  runs: number;
+  parallel: number;
+  price: number;
+  planning: number;
+  healing: number;
+  exploration: number;
+}> = {
+  free:       { runs: 50,     parallel: 1,  price: 0,   planning: 20,   healing: 10,  exploration: 20 },
+  starter:    { runs: 500,    parallel: 2,  price: 29,  planning: 100,  healing: 50,  exploration: 100 },
+  pro:        { runs: 5000,   parallel: 5,  price: 99,  planning: 500,  healing: 250, exploration: 500 },
+  business:   { runs: 25000,  parallel: 20, price: 299, planning: 2000, healing: 1000, exploration: 2000 },
+  enterprise: { runs: 999999, parallel: 50, price: 0,   planning: 999999, healing: 999999, exploration: 999999 },
 };
 
 export class Subscription extends Model<

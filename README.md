@@ -1,339 +1,241 @@
-# TestFlow — Test Execution SaaS Platform
+# TestFlow AI Quality Engineering
 
-> Run Playwright, Cypress, Selenium, pytest, TestNG, Jest, and Mocha tests from public or private external repositories via a single API call. View results in a live dashboard.
+An AI Quality Engineering SaaS: provide an application and requirements, and the platform explores the product, creates evidence-based scenarios, validates them, waits for human approval, generates Playwright tests, executes them, and heals failures.
+
+This repository is the existing TestFlow SaaS platform **transformed**, not replaced. Cloud execution, auth, billing, and multi-framework workers remain the infrastructure layer. The agentic workflow is adapted from the concepts in [`Jiten20/playwright-agentic-quality-engineering-framework`](https://github.com/Jiten20/playwright-agentic-quality-engineering-framework) — that repository was **not copied**.
 
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-green)
 ![TypeScript](https://img.shields.io/badge/typescript-5.3-blue)
 
----
+## Product Overview
 
-## ✨ Features
+| Layer | Role |
+|-------|------|
+| Product | Requirement → explore → plan → validate → approve → generate → execute → heal |
+| Platform | Auth, projects, Redis/BullMQ, isolated test workers, Stripe, GitHub webhooks |
+| Agentic core | Planner, Playwright explorer/MCP, validator, generator, healer |
 
-- **Multi-Framework Support** — Playwright, Cypress, Jest, Mocha, pytest, TestNG, Selenium
-- **External Test Repos** — Connect GitHub, GitLab, Bitbucket, or Azure DevOps repos; TestFlow does not require tests to live in this app
-- **API-First** — Trigger test runs via REST API with a single `X-API-Key` header
-- **Live Dashboard** — Real-time pass/fail charts, execution logs, and trend analytics
-- **Webhook Notifications** — Receive signed callbacks when runs complete
-- **GitHub Webhook Triggers** — Auto-run tests on GitHub push or pull request events
-- **Stripe Billing** — Subscription tiers with usage-based limits
-- **Scalable Workers** — BullMQ job queue with configurable parallelism
-- **Artifact Detection** — Workers detect framework reports and expose run logs/results
-- **Terraform IaC Foundation** — AWS VPC, RDS PostgreSQL, and S3 bucket provisioning
+Playwright is the first-class framework for the AI workflow. Cypress, Selenium, pytest, TestNG, Jest, and Mocha remain supported for **execution**.
 
----
+## Architecture
 
-## Implementation Status
+```text
+┌─────────────┐     ┌────────────────┐     ┌─────────────────┐
+│  Frontend    │────▶│  Backend API   │────▶│ Redis + BullMQ  │
+│  React/Vite  │     │  Express/TS    │     │ test-runs       │
+│  Port 3000   │     │  Port 5000     │     │ ai-workflow     │
+└─────────────┘     └───────┬────────┘     └────────┬────────┘
+                            │                       │
+                     ┌──────▼──────┐         ┌──────▼──────┐
+                     │ PostgreSQL  │         │ AI worker   │
+                     │ Port 5432   │         │ Test worker │
+                     └─────────────┘         └─────────────┘
+```
 
-### Implemented
+Details, APIs, models, and the migration matrix live in [`skills/architecture.md`](skills/architecture.md).
 
-- Docker Compose local stack for frontend, backend, PostgreSQL, Redis, worker, and optional debug tools
+## Core Workflow
+
+```text
+Requirement → AI Planner → Playwright exploration → Evidence
+    → Validator (VERIFIED | NEEDS_REVIEW | UNSUPPORTED)
+    → Human approval → Generator → Isolated execution
+    → Healer on failure → Approval → Re-run → Dashboard
+```
+
+This is an orchestrated job chain, not a chatbot.
+
+## Current Features
+
+- Multi-framework cloud test execution (retained)
+- External GitHub/GitLab/Bitbucket/Azure DevOps repositories (retained)
+- JWT + API key authentication (retained)
+- Stripe subscriptions (retained)
+- Requirements, AI test plans, scenarios, approvals, generated tests, healing, coverage
+- Playwright application exploration with evidence storage
+- Hallucination / evidence validation
+- Optional GitHub issue import and feature-branch pull requests
+- Usage limits for runs, planning, exploration, and healing
+
+## Completed
+
+See also [`skills/completed-work.md`](skills/completed-work.md).
+
+**Retained SaaS**
+
+- Docker Compose stack for frontend, backend, PostgreSQL, Redis, test worker
 - JWT and API key authentication
 - Project and test-run APIs
-- BullMQ-backed worker execution for Playwright, Cypress, Jest, Mocha, pytest, TestNG, and Selenium-style projects
+- BullMQ test execution for Playwright, Cypress, Jest, Mocha, pytest, TestNG, Selenium-style projects
 - GitHub inbound webhook route for push and pull request events
 - Outbound signed run webhooks
-- Stripe checkout, billing portal, and subscription routes
-- Stripe webhook signature verification with raw-body parsing and subscription metadata handling
-- Sequelize CLI production migration config and initial schema migration
-- Terraform foundation for AWS VPC, RDS PostgreSQL, S3 artifact bucket, and security groups
+- Stripe checkout, billing portal, subscription routes, and webhook signature verification
+- Sequelize production migrations for the original schema
+- Terraform foundation for AWS VPC, RDS PostgreSQL, and S3
 
-### Planned or Partially Implemented
+**AI QE (implemented in this transformation)**
 
-- S3 artifact uploads: report directories are detected by the worker, but uploading to S3 and returning report URLs is still pending.
-- GitLab, Bitbucket, and Azure DevOps inbound trigger routes: these providers are accepted as project metadata, but only GitHub webhook triggers are currently implemented.
-- Terraform Redis/compute deployment: Redis/ElastiCache, ECS/EKS, load balancers, and service deployment are not provisioned by the current Terraform module.
-- Python `pyproject.toml` dependency installation: the worker detects Python repositories, but full `pyproject.toml` package-manager support still needs to be wired in.
+- Requirements CRUD and GitHub issue import API
+- Asynchronous explore → plan → validate workflow (`ai-workflow` queue)
+- Playwright explorer with per-job Chromium context
+- Scenario classification: VERIFIED / NEEDS_REVIEW / UNSUPPORTED
+- Human approval for plans, scenarios, and healing
+- Playwright test generation with requirement tags and page objects
+- Generated test review, optional GitHub PR, and execution via the existing worker
+- Failure analysis + healing history + approved re-run
+- QE dashboard, coverage, and AI activity audit log
+- Additive database migration `20260901000000-create-ai-qe-schema.js`
+- Unit tests for planner, validator, generator, healer, adapters, GitHub parsing, and ownership checks
 
----
+## Partially Completed
 
-## 🏗️ Architecture
+| Feature | Status | What works | What remains | Known issues |
+|---------|--------|------------|--------------|--------------|
+| Playwright MCP stdio | Client present | Optional `PlaywrightMcpClient`; default exploration uses Playwright Chromium | Process pooling, robust JSON-RPC | MCP disabled unless `PLAYWRIGHT_MCP_ENABLED=true` |
+| S3 artifact uploads | Report dirs detected | Local evidence screenshots under `ARTIFACT_DIR` | S3 upload + signed URLs | `uploadReport()` still returns null |
+| GitHub PRs for generated tests | API + UI | Feature branch + PR when a token exists | OAuth app, review UX | No token → PR creation fails |
+| AI usage billing | Limits enforced in API | Planning/healing/exploration counters | Stripe meters | Stripe still run-centric |
+| Token encryption | Not in logs | Tokens passed only into the owning job | Encrypt at rest | Plaintext DB columns |
+| Org tenancy | User + project checks | Cross-user QE records are rejected | Organization model | Single-user projects |
+| GitLab/Bitbucket/Azure inbound triggers | Metadata accepted | Provider stored on project | Inbound routes | GitHub only |
+| `pyproject.toml` install | Detection exists | Python repos detected | Poetry/pdm/uv install | Unchanged worker debt |
+| Terraform Redis/compute | Foundation only | VPC, RDS, S3 | ElastiCache, ECS/EKS | Unchanged |
 
-```
-┌─────────────┐     ┌────────────────┐     ┌─────────────────┐
-│   Frontend   │────▶│   Backend API  │────▶│   Redis + Queue │
-│  React/Vite  │     │  Express/TS    │     │   BullMQ        │
-│  Port 3000   │     │  Port 5000     │     │   Port 6379     │
-└─────────────┘     └────────────────┘     └────────┬────────┘
-                            │                        │
-                     ┌──────▼──────┐          ┌──────▼──────┐
-                     │  PostgreSQL │          │   Worker(s)  │
-                     │  Port 5432  │          │  Clone repo  │
-                     └─────────────┘          │  Run tests   │
-                                              │  Parse JSON  │
-                                              │  Reports TBD │
-                                              └──────────────┘
-```
+## Remaining Work
 
----
+- Authenticated artifact download API
+- Encrypt repo tokens and env vars at rest
+- API integration tests, frontend tests, GitHub Actions CI
+- OpenAPI spec
+- Jira import, org RBAC, WebSockets
+- Additional generator adapters beyond Playwright
+- Cluster-level browser sandboxing
+- Email verification / SendGrid
 
-## 🚀 Quick Start
+Do not treat these as done. Details: [`skills/remaining-work.md`](skills/remaining-work.md).
 
-### Prerequisites
+## Known Limitations
 
-- **Docker & Docker Compose** (recommended)
-- Or: Node.js ≥ 20, PostgreSQL 15, Redis 7
+- Without `OPENAI_API_KEY` or `ANTHROPIC_API_KEY`, planning uses the heuristic provider (evidence-based, not LLM-creative).
+- Application exploration requires a reachable `applicationUrl` from the AI worker.
+- Generated tests are stored in the database until a human opens a PR; they are not silently committed.
+- Unsupported scenarios cannot be approved for generation.
+- Multi-framework AI generation is not implemented; only Playwright generation is first-class.
+- Local artifacts are not yet served through an authenticated download API.
 
-### 1. Clone & Configure
+## Development Setup
 
 ```bash
-git clone https://github.com/your-org/testflow-saas-platform.git
+git clone https://github.com/az-ien/testflow-saas-platform.git
 cd testflow-saas-platform
 cp .env.example .env
-# Edit .env with your own secrets (JWT_SECRET, Stripe keys, etc.)
 ```
 
-### 2. Start with Docker Compose
+Install Node 20+ for host development. Agents and humans should read `SKILLS.md` and the `skills/` directory before changing code.
+
+## Running Locally
+
+### Docker Compose
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
-This starts:
-| Service    | URL                      |
-|------------|--------------------------|
-| Frontend   | http://localhost:3000     |
-| Backend    | http://localhost:5000     |
-| PostgreSQL | localhost:5432            |
-| Redis      | localhost:6379            |
-
-### 3. Start Debug Tools (optional)
+| Service | URL |
+|---------|-----|
+| Frontend | http://localhost:3000 |
+| Backend | http://localhost:5000 |
+| PostgreSQL | localhost:5432 |
+| Redis | localhost:6379 |
 
 ```bash
 docker compose --profile debug up -d
 ```
-- PgAdmin → http://localhost:5050
-- Redis Commander → http://localhost:8081
-- Mailhog → http://localhost:8025
 
-### 4. Local Development (without Docker)
+### Host processes
 
 ```bash
-# Backend
 cd backend && npm install && npm run dev
-
-# Frontend (separate terminal)
+cd backend && npm run dev:ai-worker
 cd frontend && npm install && npm run dev
-
-# Worker (separate terminal)
 cd workers/test-executor && npm install && npm run dev
 ```
 
----
-
-## 🔌 API Usage
-
-### Authenticate
+## Testing
 
 ```bash
-# Register
-curl -X POST http://localhost:5000/api/auth/register \
-  -H "Content-Type: application/json" \
-  -d '{"email":"dev@test.com","password":"securepass","firstName":"John","lastName":"Doe"}'
-
-# Login → returns accessToken + apiKey
-curl -X POST http://localhost:5000/api/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email":"dev@test.com","password":"securepass"}'
+cd backend && npm test
+cd frontend && npm run build
 ```
 
-### Create a Project
+See [`skills/testing.md`](skills/testing.md).
 
-```bash
-curl -X POST http://localhost:5000/api/projects \
-  -H "X-API-Key: tf_your_api_key_here" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "My Playwright Tests",
-    "repoUrl": "https://github.com/user/playwright-tests",
-    "repoProvider": "github",
-    "framework": "playwright",
-    "repoBranch": "main",
-    "testPattern": "tests/**/*.spec.ts",
-    "repoAccessToken": "ghp_xxxxx"
-  }'
-```
+## Deployment
 
-### Trigger a Test Run
-
-```bash
-curl -X POST http://localhost:5000/api/runs \
-  -H "X-API-Key: tf_your_api_key_here" \
-  -H "Content-Type: application/json" \
-  -d '{"projectId": "uuid-from-above", "branch": "main"}'
-
-# Response:
-# { "runId": "...", "status": "queued", "estimatedStart": "within 30 seconds" }
-```
-
-### Get Results
-
-```bash
-curl http://localhost:5000/api/runs/{runId} \
-  -H "X-API-Key: tf_your_api_key_here"
-
-# Response includes: status, summary, individual test results, logs, report URL
-```
-
----
-
-## 🧪 External Test Execution
-
-TestFlow is an orchestration service. It does not keep its own product test suite inside this repository. Each project points to an external repository, and each run clones that repository into an isolated temporary worker directory, installs dependencies from the repo manifest, runs the configured framework, parses machine-readable results, then removes the workspace.
-
-Supported dependency manifests:
-
-| Ecosystem | Supported manifests |
-|-----------|---------------------|
-| Node.js   | `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, or `package.json` |
-| Python    | `requirements.txt` repositories; `pyproject.toml` detection exists, but full dependency installation support is planned |
-| Java      | `pom.xml` via Maven |
-
-Supported frameworks:
-
-| Framework  | Language | Worker command | Parsed report |
-|------------|----------|----------------|---------------|
-| Playwright | JS/TS or Python | JS/TS: `npx playwright test <testPattern> --reporter=json`; Python: `python3 -m pytest <testPattern> --json-report` | JS/TS: `test-results/playwright-results.json`; Python: `test-results/pytest-results.json` |
-| Cypress    | JS/TS    | `npx cypress run --spec <testPattern> --reporter junit` | `test-results/cypress-*.xml` |
-| Jest       | JS/TS    | `npx jest <testPattern> --json --outputFile=test-results/jest-results.json` | `test-results/jest-results.json` |
-| Mocha      | JS/TS    | `npx mocha <testPattern> --reporter json` | `test-results/mocha-results.json` |
-| pytest     | Python   | `python3 -m pytest <testPattern> --json-report` | `test-results/pytest-results.json` |
-| TestNG     | Java     | `mvn -B test -Dsurefire.useFile=true` | `target/surefire-reports/*.xml` |
-| Selenium   | Multi    | Maven, `npm test`, or pytest depending on the repo manifest | JUnit XML or pytest JSON |
-
-`testPattern` is optional. If omitted, the framework's native discovery behavior is used. For public repositories, leave `repoAccessToken` empty. Private repositories can provide `repoAccessToken`, which the worker injects into the clone URL for that run.
-
----
-
-## 💰 Pricing Tiers
-
-| Plan       | Price     | Runs/month | Parallel Runners |
-|------------|-----------|------------|------------------|
-| Free       | $0        | 50         | 1                |
-| Starter    | $29/mo    | 500        | 2                |
-| Pro        | $99/mo    | 5,000      | 5                |
-| Business   | $299/mo   | 25,000     | 20               |
-| Enterprise | Custom    | Unlimited  | 50+              |
-
----
-
-## 🛠️ Tech Stack
-
-| Layer          | Technology                                      |
-|----------------|-------------------------------------------------|
-| Frontend       | React 18, Vite, Tailwind CSS, Redux Toolkit, Recharts |
-| Backend API    | Node.js, Express, TypeScript                    |
-| Auth           | JWT + API Key dual auth, bcryptjs                |
-| Database       | PostgreSQL 15, Sequelize ORM                    |
-| Cache & Queue  | Redis 7, BullMQ                                 |
-| Test Workers   | Docker workers with Node.js, Playwright Chromium, Python/pytest, Java 17, and Maven |
-| Billing        | Stripe (Checkout + Billing Portal)              |
-| Monitoring     | Sentry, Winston logging with rotation           |
-| Infrastructure | Terraform (AWS VPC, RDS, S3)                    |
-| Containers     | Docker, Docker Compose                          |
-
----
-
-## 📁 Project Structure
-
-```
-testflow-saas-platform/
-├── backend/                    # Express API server
-│   ├── src/
-│   │   ├── app.ts              # Entry point
-│   │   ├── config/             # DB, Redis, Logger
-│   │   ├── middleware/         # Auth, Error handling
-│   │   ├── models/             # Sequelize models
-│   │   ├── routes/             # REST endpoints
-│   │   └── services/           # Business logic
-│   ├── config/                 # Sequelize CLI config
-│   ├── migrations/             # Production database migrations
-│   ├── Dockerfile
-│   └── package.json
-├── frontend/                   # React dashboard
-│   ├── src/
-│   │   ├── App.tsx             # Router
-│   │   ├── features/           # Redux slices
-│   │   ├── layouts/            # Dashboard layout
-│   │   ├── pages/              # All pages
-│   │   └── services/           # API client
-│   ├── Dockerfile
-│   └── package.json
-├── workers/
-│   └── test-executor/          # BullMQ worker
-│       ├── src/
-│       │   ├── worker.ts       # Job processor
-│       │   ├── TestExecutor.ts # Clone → Install → Run → Parse
-│       │   └── WebhookNotifier.ts
-│       ├── Dockerfile
-│       └── package.json
-├── terraform/                  # AWS infrastructure
-│   ├── main.tf
-│   └── variables.tf
-├── SKILLS.md                   # AI agent standards & implementation tracker
-├── .env.example                # All configuration variables
-├── .gitignore
-├── docker-compose.yml          # Full local stack
-└── README.md
-```
-
----
-
-## 🔗 Webhook Integration
-
-Configure a `webhookUrl` on your project. TestFlow sends signed POST requests on:
-
-| Event            | When                        |
-|------------------|-----------------------------|
-| `run.started`    | Worker picks up the job     |
-| `run.status`     | Status changes (cloning → installing → running) |
-| `run.completed`  | Tests finished (passed/failed) |
-| `run.error`      | Unrecoverable error         |
-
-Verify signatures with the `X-TestFlow-Signature` header (HMAC-SHA256).
-
----
-
-## 🚢 Production Deployment
-
-### AWS with Terraform
-
-```bash
-cd terraform
-terraform init
-terraform plan -var="db_password=YOUR_SECURE_PASSWORD"
-terraform apply
-```
-
-This creates: VPC, 2 public + 2 private subnets, RDS PostgreSQL 15, S3 bucket, security groups.
-
-### Run Database Migrations
+Production migrations:
 
 ```bash
 cd backend
 NODE_ENV=production npm run migrate
 ```
 
-Run migrations after setting the production database environment variables and before starting the API service.
+Terraform still provisions VPC, RDS, and S3 only. Service orchestration is separate. See [`skills/deployment.md`](skills/deployment.md).
 
-### Deploy Services
+## Roadmap
 
-Deploy the backend, frontend, workers, and Redis to ECS, EKS, or any Docker-compatible host. Point the environment variables to the Terraform outputs (RDS endpoint, S3 bucket name). The current Terraform module provisions the AWS foundation only; service orchestration is still a separate deployment step.
+1. Artifact download + S3
+2. Encrypt secrets at rest
+3. CI and API integration tests
+4. Hardened Playwright MCP session pool
+5. Organization RBAC
+6. Additional generator adapters
+7. Stripe meters for AI planning/healing
 
----
+## API usage (unchanged execution path)
 
-## 🤝 Contributing
+```bash
+curl -X POST http://localhost:5000/api/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"email":"dev@test.com","password":"securepass","firstName":"John","lastName":"Doe"}'
 
-> **AI Agents:** Before making any changes, read `SKILLS.md` in the project root. After making changes, update its Implementation Tracker (§6) and Change Log (§7).
+curl -X POST http://localhost:5000/api/projects \
+  -H "X-API-Key: tf_your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Demo","applicationUrl":"https://www.saucedemo.com","repoProvider":"github","framework":"playwright"}'
 
-1. Fork the repository
-2. Create a feature branch: `git checkout -b feature/my-feature`
-3. Commit changes: `git commit -m "feat: add new feature"`
-4. Push: `git push origin feature/my-feature`
-5. Open a Pull Request
+curl -X POST http://localhost:5000/api/requirements \
+  -H "X-API-Key: tf_your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{"projectId":"uuid","title":"Successful checkout","acceptanceCriteria":"Login\nAdd backpack\nComplete order"}'
 
----
+curl -X POST http://localhost:5000/api/test-plans \
+  -H "X-API-Key: tf_your_api_key_here" \
+  -H "Content-Type: application/json" \
+  -d '{"requirementId":"uuid"}'
+```
 
-## 📄 License
+Existing `POST /api/runs` still queues isolated test execution.
+
+## Tech stack
+
+| Layer | Technology |
+|-------|------------|
+| Frontend | React 18, Vite, Tailwind CSS, Redux Toolkit |
+| Backend | Node.js, Express, TypeScript, Sequelize |
+| AI | Configurable LLM providers + heuristic fallback |
+| Exploration | Playwright Chromium (optional Playwright MCP) |
+| Queue | Redis 7, BullMQ (`test-runs`, `ai-workflow`) |
+| Billing | Stripe |
+| IaC | Terraform (AWS foundation) |
+
+## Documentation for the next agent
+
+| File | Purpose |
+|------|---------|
+| `SKILLS.md` | Coding standards and tracker |
+| `skills/` | Living implementation knowledge |
+
+## License
 
 MIT © TestFlow

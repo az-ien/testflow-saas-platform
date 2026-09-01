@@ -13,6 +13,15 @@ import RunsPage from './pages/RunsPage';
 import RunDetailPage from './pages/RunDetailPage';
 import SettingsPage from './pages/SettingsPage';
 import PricingPage from './pages/PricingPage';
+import RequirementsPage from './pages/RequirementsPage';
+import TestPlansPage from './pages/TestPlansPage';
+import TestPlanDetailPage from './pages/TestPlanDetailPage';
+import ScenariosPage from './pages/ScenariosPage';
+import ScenarioDetailPage from './pages/ScenarioDetailPage';
+import ApprovalsPage from './pages/ApprovalsPage';
+import GeneratedTestsPage from './pages/GeneratedTestsPage';
+import HealingPage from './pages/HealingPage';
+import CoveragePage from './pages/CoveragePage';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const token = useAppSelector(s => s.auth.accessToken);
@@ -44,8 +53,17 @@ export default function App() {
           <Route index element={<DashboardPage />} />
           <Route path="projects" element={<ProjectsPage />} />
           <Route path="projects/:id" element={<ProjectDetailPage />} />
+          <Route path="requirements" element={<RequirementsPage />} />
+          <Route path="test-plans" element={<TestPlansPage />} />
+          <Route path="test-plans/:id" element={<TestPlanDetailPage />} />
+          <Route path="scenarios" element={<ScenariosPage />} />
+          <Route path="scenarios/:id" element={<ScenarioDetailPage />} />
+          <Route path="approvals" element={<ApprovalsPage />} />
+          <Route path="generated" element={<GeneratedTestsPage />} />
           <Route path="runs" element={<RunsPage />} />
           <Route path="runs/:id" element={<RunDetailPage />} />
+          <Route path="healing" element={<HealingPage />} />
+          <Route path="coverage" element={<CoveragePage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 

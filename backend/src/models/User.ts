@@ -33,6 +33,9 @@ export class User extends Model<
   declare stripeCustomerId: CreationOptional<string | null>;
   declare monthlyRunsUsed: CreationOptional<number>;
   declare monthlyRunsLimit: CreationOptional<number>;
+  declare monthlyPlanningUsed: CreationOptional<number>;
+  declare monthlyHealingUsed: CreationOptional<number>;
+  declare monthlyExplorationUsed: CreationOptional<number>;
   declare lastLoginAt: CreationOptional<Date | null>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
@@ -126,6 +129,18 @@ User.init(
     monthlyRunsLimit: {
       type: DataTypes.INTEGER,
       defaultValue: 50, // free tier
+    },
+    monthlyPlanningUsed: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    monthlyHealingUsed: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
+    },
+    monthlyExplorationUsed: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0,
     },
     lastLoginAt: {
       type: DataTypes.DATE,

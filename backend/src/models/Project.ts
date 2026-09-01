@@ -32,6 +32,12 @@ export class Project extends Model<
   declare isActive: CreationOptional<boolean>;
   declare totalRuns: CreationOptional<number>;
   declare lastRunAt: CreationOptional<Date | null>;
+  declare applicationUrl: CreationOptional<string | null>;
+  declare approvalPolicy: CreationOptional<'always' | 'verified_auto' | 'manual_all'>;
+  declare autoGenerateOnApprove: CreationOptional<boolean>;
+  declare autoCreatePullRequest: CreationOptional<boolean>;
+  declare autoHealOnFailure: CreationOptional<boolean>;
+  declare explorationMaxPages: CreationOptional<number>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 }
@@ -57,8 +63,7 @@ Project.init(
     },
     repoUrl: {
       type: DataTypes.STRING(500),
-      allowNull: false,
-      validate: { isUrl: true },
+      allowNull: true,
     },
     repoBranch: {
       type: DataTypes.STRING(100),
@@ -105,6 +110,33 @@ Project.init(
     lastRunAt: {
       type: DataTypes.DATE,
       allowNull: true,
+    },
+    applicationUrl: {
+      type: DataTypes.STRING(1000),
+      allowNull: true,
+      comment: 'Live application URL used by Playwright MCP / explorer',
+    },
+    approvalPolicy: {
+      type: DataTypes.STRING(30),
+      allowNull: false,
+      defaultValue: 'always',
+      comment: 'always | verified_auto | manual_all',
+    },
+    autoGenerateOnApprove: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: true,
+    },
+    autoCreatePullRequest: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    autoHealOnFailure: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false,
+    },
+    explorationMaxPages: {
+      type: DataTypes.INTEGER,
+      defaultValue: 6,
     },
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE,

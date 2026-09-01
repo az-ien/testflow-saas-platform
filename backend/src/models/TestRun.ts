@@ -57,6 +57,12 @@ export class TestRun extends Model<
   declare reportUrl: CreationOptional<string | null>;   // HTML report on S3
   declare artifactsUrl: CreationOptional<string | null>; // ZIP of screenshots/videos
   declare workerJobId: CreationOptional<string | null>;
+  declare correlationId: CreationOptional<string | null>;
+  declare testPlanId: CreationOptional<string | null>;
+  declare scenarioId: CreationOptional<string | null>;
+  declare generatedTestId: CreationOptional<string | null>;
+  declare healingAttemptId: CreationOptional<string | null>;
+  declare triggerSource: CreationOptional<string | null>;
   declare queuedAt: CreationOptional<Date>;
   declare startedAt: CreationOptional<Date | null>;
   declare completedAt: CreationOptional<Date | null>;
@@ -131,6 +137,30 @@ TestRun.init(
     },
     workerJobId: {
       type: DataTypes.STRING(100),
+      allowNull: true,
+    },
+    correlationId: {
+      type: DataTypes.STRING(80),
+      allowNull: true,
+    },
+    testPlanId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
+    scenarioId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
+    generatedTestId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
+    healingAttemptId: {
+      type: DataTypes.UUID,
+      allowNull: true,
+    },
+    triggerSource: {
+      type: DataTypes.STRING(40),
       allowNull: true,
     },
     queuedAt: {

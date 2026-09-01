@@ -30,7 +30,7 @@ export default function ProjectsPage() {
   const [form, setForm] = useState({
     name: '', description: '', repoUrl: '', repoProvider: 'github',
     repoBranch: 'main', framework: 'playwright', testPattern: '',
-    webhookUrl: '', repoAccessToken: '',
+    webhookUrl: '', repoAccessToken: '', applicationUrl: '',
   });
 
   useEffect(() => { dispatch(fetchProjects()); }, []);
@@ -39,7 +39,7 @@ export default function ProjectsPage() {
     e.preventDefault();
     await dispatch(createProject(form));
     setShowModal(false);
-    setForm({ name: '', description: '', repoUrl: '', repoProvider: 'github', repoBranch: 'main', framework: 'playwright', testPattern: '', webhookUrl: '', repoAccessToken: '' });
+    setForm({ name: '', description: '', repoUrl: '', repoProvider: 'github', repoBranch: 'main', framework: 'playwright', testPattern: '', webhookUrl: '', repoAccessToken: '', applicationUrl: '' });
   };
 
   const handleTrigger = async (projectId: string) => {
@@ -57,7 +57,7 @@ export default function ProjectsPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">Projects</h1>
-          <p className="text-muted text-sm mt-1">Connect your test repos and run them on demand</p>
+          <p className="text-muted text-sm mt-1">Connect an application URL and repository for AI quality engineering</p>
         </div>
         <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
           <Plus size={16} /> New Project
@@ -138,8 +138,13 @@ export default function ProjectsPage() {
                     value={form.name} onChange={e => setForm(f => ({ ...f, name: e.target.value }))} />
                 </div>
                 <div className="col-span-2">
-                  <label className="text-xs text-muted mb-1 block">Repository URL *</label>
-                  <input className="input" required placeholder="https://github.com/user/repo"
+                  <label className="text-xs text-muted mb-1 block">Application URL</label>
+                  <input className="input" placeholder="https://www.saucedemo.com"
+                    value={form.applicationUrl} onChange={e => setForm(f => ({ ...f, applicationUrl: e.target.value }))} />
+                </div>
+                <div className="col-span-2">
+                  <label className="text-xs text-muted mb-1 block">Repository URL</label>
+                  <input className="input" placeholder="https://github.com/user/repo"
                     value={form.repoUrl} onChange={e => setForm(f => ({ ...f, repoUrl: e.target.value }))} />
                 </div>
                 <div>
