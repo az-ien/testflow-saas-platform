@@ -24,6 +24,7 @@ backend/src/ai/
   planner/PlannerService.ts
   validator/ValidatorService.ts
   generator/GeneratorService.ts
+  executor/GeneratedTestRunner.ts
   healer/HealerService.ts
   adapters/PlaywrightAdapter.ts
   providers/   heuristic | openai | anthropic
@@ -44,14 +45,15 @@ AI providers are configurable via `AI_PROVIDER`, `OPENAI_API_KEY`, and `ANTHROPI
 | `EXPLORE_APPLICATION` | Playwright exploration + evidence persistence |
 | `PLAN_TEST` | Scenario generation from requirement + evidence |
 | `VALIDATE_SCENARIOS` | VERIFIED / NEEDS_REVIEW / UNSUPPORTED |
-| `GENERATE_TEST` | Playwright files for approved scenarios |
+| `GENERATE_TEST` | Playwright workspace + compile check for approved scenarios |
+| `EXECUTE_GENERATED_TEST` | Run the generated Playwright files |
 | `ANALYZE_FAILURE` | Healer analysis of a failed run |
 | `HEAL_TEST` | Apply approved fix policy (PR, never silent main) |
-| `RE_RUN_TEST` | Enqueue isolated execution on `test-runs` |
+| `RE_RUN_TEST` | Re-run generated files, or enqueue customer-repo execution on `test-runs` |
 
 `WAIT_FOR_APPROVAL` is a **plan/healing status**, not a processor. The chain stops until a human decision.
 
-Existing queue `test-runs` is unchanged and remains the execution infrastructure.
+Existing queue `test-runs` still clones **customer repositories**. Generated Playwright files run on `EXECUTE_GENERATED_TEST` in the AI worker.
 
 ## Traceability model
 
@@ -78,7 +80,7 @@ Every AI write is also recorded in `ai_activities` and `workflow_jobs` with `use
 - AI processors re-check `userId` + `projectId` before mutating.
 - Explorer workspaces and screenshots are stored under `{ARTIFACT_DIR}/{userId}/{projectId}/{correlationId}`.
 - Customer repos are still cloned into `tmpdir/testflow-{runId}` and deleted after the run.
-- Generated code is stored in the database. Opening a GitHub PR requires an explicit action and a repo token. Default branch writes are not performed.
+- Opening a GitHub PR requires an explicit action and a repo token. Default branch writes are not performed.
 
 ## Migration matrix
 

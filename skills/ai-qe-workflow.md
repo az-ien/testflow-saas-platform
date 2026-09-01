@@ -27,11 +27,11 @@ VERIFIED | NEEDS_REVIEW | UNSUPPORTED
     ↓
 Human approval  (WAIT_FOR_APPROVAL status)
     ↓
-GENERATE_TEST  (Playwright adapter, reuse repo inventory when GitHub is readable)
+GENERATE_TEST  (Playwright adapter writes a workspace and compile-checks it)
     ↓
 Review generated files / optional feature-branch PR
     ↓
-Execute on test-runs worker
+EXECUTE_GENERATED_TEST  (runs the generated files)
     ↓
 PASS → dashboard
 FAIL → ANALYZE_FAILURE → healing proposal → approval → HEAL_TEST → RE_RUN_TEST

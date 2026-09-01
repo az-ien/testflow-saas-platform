@@ -1,48 +1,42 @@
 # Test generation
 
-This document describes the **current** generator and the target engine. Phase 7 is not complete.
+Approved scenarios become a real Playwright workspace, then a compile check, then an optional run of **those** files.
 
-## Current behavior (honest)
+## Layout
 
-`GeneratorService` + `PlaywrightAdapter` produce Playwright-like TypeScript **stored in `generated_tests.files` JSONB**.
-
-Typical paths inside that JSON:
+`GeneratorService` + `PlaywrightAdapter` emit:
 
 ```text
 pages/<Name>Page.ts
-tests/generated/<scenario-key>.spec.ts
 fixtures/baseTest.ts
+test-data/users.ts
+tests/<scenario-key>.spec.ts
+playwright.config.ts
 ```
 
-That is a useful shape. It is **not** yet:
+Selectors come from scenario evidence (`testid:`, `selector:`, `name:`, `text:`, `id:`). Page object fields are assigned those locators and the spec calls the matching `fill` / `click` / `expectVisible` methods. Credentials are `process.env.TEST_USERNAME` and `process.env.TEST_PASSWORD` with no demo fallbacks.
 
-- written to an isolated workspace
-- compiled with `tsc` / Playwright
-- executed as the generated files
-- guaranteed to use only selectors discovered during exploration
+## Workspace and statuses
 
-“Generated successfully” currently means “a database row was created.” It does not mean COMPILES, EXECUTED, PASSED, or FAILED.
-
-Executing a generated test still clones the **customer repository** and runs that repo’s existing tests.
-
-## Target (Phase 7–8)
+The `GENERATE_TEST` job writes the files under:
 
 ```text
-Approved scenario
-        ↓
-Write pages/, fixtures/, test-data/, tests/ into a workspace
-        ↓
-Validate syntax
-        ↓
-Run Playwright against those files
-        ↓
-Store GENERATED / COMPILES / EXECUTED / PASSED / FAILED separately
+{ARTIFACT_DIR}/{userId}/{projectId}/generated-tests/{generatedTestId}/workspace
 ```
 
-Selectors and URLs must come from exploration evidence. No invented workflows.
+Then `playwright test --list` is the compile check.
+
+| Field | Meaning |
+|-------|---------|
+| `status` | Lifecycle (`ready`, `pr_opened`, `executed`, …) |
+| `compileStatus` | `pending` / `compiles` / `failed` |
+| `executionStatus` | `pending` / `queued` / `running` / `passed` / `failed` / `error` |
+
+`POST /api/generated-tests/:id/execute` runs the generated workspace (job `EXECUTE_GENERATED_TEST`). It does **not** clone the customer repository. Connected-repo execution remains on `POST /api/runs` and the existing test worker.
 
 ## Safety
 
 - Generation runs only for approved scenarios.
 - UNSUPPORTED scenarios cannot be approved for generation.
+- Generated source must not include `waitForTimeout` or invented `.or(getByRole/getByLabel)` chains.
 - Never commit generated files to `main`.

@@ -16,7 +16,7 @@ Each agent is a TypeScript service invoked by a BullMQ job on the `ai-workflow` 
 | Planner | `PLAN_TEST` | Turn requirement + evidence into scenarios | Assume UI that was not observed |
 | Validator | `VALIDATE_SCENARIOS` | Classify VERIFIED / NEEDS_REVIEW / UNSUPPORTED | Upgrade UNSUPPORTED to VERIFIED |
 | Generator | `GENERATE_TEST` | Produce Playwright files for **approved** scenarios | Generate for unsupported or unapproved rows |
-| Executor | existing `test-runs` worker | Run tests in isolation | Silently write to `main` |
+| Executor | `EXECUTE_GENERATED_TEST` + existing `test-runs` worker | Run **generated** Playwright files in isolation; keep customer-repo runs | Silently write to `main` |
 | Analyzer | `ANALYZE_FAILURE` | Classify a failure from logs/artifacts | Change tests |
 | Healer | `HEAL_TEST` | Propose a patch that preserves assertions | Remove or weaken assertions |
 
@@ -58,9 +58,9 @@ Validator
         ↓
 Dashboard approval
         ↓
-GeneratedTest.files (JSONB today)
+GeneratedTest.files (JSONB) + workspace on disk
         ↓
-Executor / optional GitHub feature-branch PR
+EXECUTE_GENERATED_TEST / optional GitHub feature-branch PR
         ↓
 Failure → Analyzer → HealingAttempt → approval → isolated re-run
 ```
@@ -71,9 +71,8 @@ Failure → Analyzer → HealingAttempt → approval → isolated re-run
 - Evidence is stored in PostgreSQL (`scenario_evidence`) and screenshots under `ARTIFACT_DIR`.
 - Planner emits scenarios from observed controls; unmatched or invented features stay review/unsupported (Phase 4).
 - Validator requires observed controls; a start URL is not enough (Phase 5).
-- Approval workflow and multi-framework **execution** of connected repos.
+- Approval workflow, generated Playwright workspace compile/run, and multi-framework **execution** of connected repos.
 
 ## What is still thinner than the target engine
 
-- Generator writes files into the database, not a workspace run (Phase 7–8).
 - Healer does not reopen a browser (Phase 10–11).
