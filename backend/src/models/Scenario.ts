@@ -31,6 +31,7 @@ export class Scenario extends Model<InferAttributes<Scenario>, InferCreationAttr
   declare expectedResult: CreationOptional<string | null>;
   declare rationale: CreationOptional<string | null>;
   declare assumptions: CreationOptional<string[]>;
+  declare evidenceRefs: CreationOptional<string[]>;
   declare classification: CreationOptional<ScenarioClassification>;
   declare status: CreationOptional<ScenarioStatus>;
   declare confidence: CreationOptional<number | null>;
@@ -52,6 +53,7 @@ Scenario.init(
     expectedResult: { type: DataTypes.TEXT, allowNull: true },
     rationale: { type: DataTypes.TEXT, allowNull: true },
     assumptions: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
+    evidenceRefs: { type: DataTypes.JSONB, allowNull: false, defaultValue: [] },
     classification: { type: DataTypes.STRING(30), allowNull: false, defaultValue: 'NEEDS_REVIEW' },
     status: { type: DataTypes.STRING(30), allowNull: false, defaultValue: 'draft' },
     confidence: { type: DataTypes.FLOAT, allowNull: true },

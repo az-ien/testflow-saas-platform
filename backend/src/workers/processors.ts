@@ -253,6 +253,7 @@ const planTests = async (job: AiWorkflowJobData): Promise<void> => {
       expectedResult: scenario.expectedResult,
       rationale: scenario.rationale,
       assumptions: scenario.assumptions,
+      evidenceRefs: scenario.evidenceRefs || [],
       status: 'draft',
     });
   }
@@ -296,7 +297,7 @@ const validateScenarios = async (job: AiWorkflowJobData): Promise<void> => {
       steps: row.steps || [],
       expectedResult: row.expectedResult || '',
       requirementRefs: [requirement.key],
-      evidenceRefs: [],
+      evidenceRefs: row.evidenceRefs || [],
       assumptions: row.assumptions || [],
       rationale: row.rationale || '',
     })),
@@ -401,7 +402,7 @@ const generateTests = async (job: AiWorkflowJobData): Promise<void> => {
         steps: scenario.steps || [],
         expectedResult: scenario.expectedResult || '',
         requirementRefs: [requirement.key],
-        evidenceRefs: [],
+        evidenceRefs: scenario.evidenceRefs || [],
         assumptions: scenario.assumptions || [],
         rationale: scenario.rationale || '',
       },

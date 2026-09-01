@@ -118,7 +118,7 @@ See also [`skills/completed-work.md`](skills/completed-work.md).
 ## Remaining Work
 
 - Authenticated artifact download API
-- Evidence-driven planner / generated-test execution / browser healing (see `docs/QE_ENGINE_PLAN.md`)
+- Generated-test execution / browser healing (see `docs/QE_ENGINE_PLAN.md`)
 - Encrypt repo tokens and env vars at rest
 - API integration tests, frontend tests, GitHub Actions CI
 - OpenAPI spec

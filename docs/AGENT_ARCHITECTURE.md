@@ -69,11 +69,11 @@ Failure → Analyzer → HealingAttempt → approval → isolated re-run
 
 - Explorer uses real Chromium and records an action log (Phase 2).
 - Evidence is stored in PostgreSQL (`scenario_evidence`) and screenshots under `ARTIFACT_DIR`.
+- Planner emits scenarios from observed controls; unmatched or invented features stay review/unsupported (Phase 4).
+- Validator requires observed controls; a start URL is not enough (Phase 5).
 - Approval workflow and multi-framework **execution** of connected repos.
 
 ## What is still thinner than the target engine
 
-- Planner still has heuristic keyword matching (Phase 4).
-- Validator can over-trust `evidenceRefs` (Phase 5).
 - Generator writes files into the database, not a workspace run (Phase 7–8).
 - Healer does not reopen a browser (Phase 10–11).

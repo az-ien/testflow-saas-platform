@@ -13,7 +13,8 @@ Jest + ts-jest. Tests do **not** require PostgreSQL, Redis, or an LLM key.
 Covered now:
 
 - Planner evidence mapping (`PlannerService.test.ts`)
-- Hallucination classification including GH-002-style payment invention (`classification.test.ts`)
+- Hallucination classification; start-URL refs are not enough (`classification.test.ts`)
+- Evidence matching for locators (`backend/src/ai/evidence/matching.test.ts`)
 - Playwright generation + traceability tags (`GeneratorService.test.ts`)
 - Healer categories and assertion preservation (`HealerService.test.ts`)
 - Framework adapter defaulting to Playwright (`FrameworkAdapter.test.ts`)

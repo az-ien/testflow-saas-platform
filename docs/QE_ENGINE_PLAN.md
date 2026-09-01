@@ -9,10 +9,10 @@ This document is the architecture comparison between TestFlow **today** and the 
 | Area | TestFlow today | Target engine | Gap |
 |------|----------------|---------------|-----|
 | Product shape | Multi-tenant SaaS | Same SaaS, deeper QE agents | Keep SaaS packaging. |
-| Planner | Heuristic + optional LLM; can emit scenarios from acceptance criteria with weak UI match | Evidence-first scenarios only | Evidence-first planning is incomplete. |
+| Planner | Evidence-first heuristic + optional LLM; unmatched AC kept for review/unsupported | Evidence-first scenarios only | **Phase 4 done.** LLM still optional. |
+| Validator | VERIFIED / NEEDS_REVIEW / UNSUPPORTED; start URL is not control proof | Reject anything not observed in the UI | **Phase 5 done.** |
 | Explorer | Interactive Chromium (goto, snapshot, login fill/click, same-origin crawl, action log) | Same, plus richer authenticated flows | Phase 2 landed. SPA/iframe/upload gaps remain. |
 | Evidence | URLs, DOM, screenshots, actions, console, network in `scenario_evidence` | Planner/generator/healer consume the same evidence end to end | Action log exists; later agents still underuse it. |
-| Validator | VERIFIED / NEEDS_REVIEW / UNSUPPORTED | Reject anything not observed in the UI | Over-verifies when `evidenceRefs` is just the start URL. |
 | Approval | SaaS dashboard + policies | Keep TestFlow human review | Keep TestFlow. |
 | Generator | Playwright-like files stored in **JSONB** | Real `pages/`, `fixtures/`, `test-data/`, `tests/` in a workspace | Files are not a workspace; locators can be invented. |
 | Execution | Existing multi-framework worker clones **customer repo** | Run the **generated** specs | Generated files are not what gets executed. |
@@ -67,15 +67,13 @@ Agent folders already exist:
 
 ## What is missing (engine depth)
 
-1. **Evidence that the planner cannot ignore** — post-login pages and locator candidates must drive planning. Planner must not assume a feature exists without it.
-2. **Strict validation** — `evidenceRefs: [startUrl]` must not count as proof of a control.
-3. **Executable generation** — write `pages/`, `fixtures/`, `test-data/`, `tests/` to a workspace; syntax-check; use only discovered selectors.
-4. **Generated-test execution statuses** — GENERATED / COMPILES / EXECUTED / PASSED / FAILED as distinct from “row created”.
-5. **Workspace git flow** — generate → run → diff → approval → feature-branch PR. Never silent `main`.
-6. **Browser-based failure analysis** — reopen the app, inspect DOM, classify test vs app vs selector vs timing vs env vs data.
-7. **Safe healing** — propose a patch, rerun in isolation, refuse assertion deletion, require approval before repo change.
-8. **Optional MCP backend** — Agent → `BrowserAutomationInterface` → Playwright or future MCP, without coupling the SaaS to an IDE MCP session.
-9. **End-to-end smoke** — requirement → real browser → evidence → scenario → approval → real spec on disk → real Playwright run → result.
+1. **Executable generation** — write `pages/`, `fixtures/`, `test-data/`, `tests/` to a workspace; syntax-check; use only discovered selectors.
+2. **Generated-test execution statuses** — GENERATED / COMPILES / EXECUTED / PASSED / FAILED as distinct from “row created”.
+3. **Workspace git flow** — generate → run → diff → approval → feature-branch PR. Never silent `main`.
+4. **Browser-based failure analysis** — reopen the app, inspect DOM, classify test vs app vs selector vs timing vs env vs data.
+5. **Safe healing** — propose a patch, rerun in isolation, refuse assertion deletion, require approval before repo change.
+6. **Optional MCP backend** — Agent → `BrowserAutomationInterface` → Playwright or future MCP, without coupling the SaaS to an IDE MCP session.
+7. **End-to-end smoke** — requirement → real browser → evidence → scenario → approval → real spec on disk → real Playwright run → result.
 
 ---
 
@@ -121,8 +119,8 @@ Do not implement every phase at once.
 | **1** | Architecture analysis (this document) | Honest gap list |
 | **2** | Real Playwright exploration (interactive) | Click/fill/login, action log, no fictional UI — **done** |
 | **3** | Evidence model | Actions, locators, screenshots restored for planner — **partial** |
-| **4** | Evidence-driven planner | No scenario without supporting evidence |
-| **5** | Scenario validation | Stop over-verifying weak refs |
+| **4** | Evidence-driven planner | No scenario without supporting evidence — **done** |
+| **5** | Scenario validation | Stop over-verifying weak refs — **done** |
 | **6** | Human approval | Already present; expose classification rationale |
 | **7** | Real Playwright generation | Valid files, discovered selectors only |
 | **8** | Real execution of **generated** tests | GENERATED/COMPILES/EXECUTED/PASSED/FAILED |
