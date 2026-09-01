@@ -4,6 +4,19 @@ An AI Quality Engineering SaaS: provide an application and requirements, and the
 
 This repository is the existing TestFlow SaaS platform **transformed**, not replaced. Cloud execution, auth, billing, and multi-framework workers remain the infrastructure layer. The product workflow is evidence-driven agentic quality engineering (explore → plan → validate → approve → generate → execute → heal).
 
+## AI agent git policy (mandatory)
+
+Any AI agent working in this repository **must**:
+
+1. Create a **new branch** from latest `main` (do not use `main` as the working branch)
+2. Commit **all** changes on that branch
+3. Push the branch to the remote
+4. Open a **new pull request** into `main`
+
+Agents **must not** commit, push, or merge directly to `main`. Treat `main` as read-only unless a human explicitly asks to merge a PR.
+
+Details: [`SKILLS.md`](SKILLS.md) §8 Agent Rules of Engagement.
+
 ![License](https://img.shields.io/badge/license-MIT-blue)
 ![Node](https://img.shields.io/badge/node-%3E%3D20-green)
 ![TypeScript](https://img.shields.io/badge/typescript-5.3-blue)
@@ -133,7 +146,7 @@ cd testflow-saas-platform
 cp .env.example .env
 ```
 
-Install Node 20+ for host development. Agents and humans should read `SKILLS.md` and the `skills/` directory before changing code.
+Install Node 20+ for host development. Agents and humans should read `SKILLS.md` and the `skills/` directory before changing code. Agents must work on a feature branch and open a pull request; see [AI agent git policy](#ai-agent-git-policy-mandatory).
 
 ## Running Locally
 
@@ -234,7 +247,7 @@ Existing `POST /api/runs` still queues isolated test execution.
 
 | File | Purpose |
 |------|---------|
-| `SKILLS.md` | Coding standards and tracker |
+| `SKILLS.md` | Coding standards, tracker, and **mandatory branch + PR policy** |
 | `skills/` | Living implementation knowledge |
 | `docs/QE_ENGINE_PLAN.md` | Current vs target QE engine |
 | `docs/AGENT_ARCHITECTURE.md` | Agent split and browser interface |

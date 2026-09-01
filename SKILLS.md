@@ -4,6 +4,8 @@
 >
 > Every AI agent (Cursor, Copilot, Gemini, Claude, etc.) **MUST** read this file before making any code change. After completing work, the agent **MUST** update the relevant sections (especially §6 Implementation Tracker and §7 Change Log) to keep this document in sync with reality.
 >
+> **Git is mandatory:** create your own branch, commit and push **all** work on that branch, and open a **new pull request**. **Never work on `main`.** Never commit, push, or merge directly to `main`.
+>
 > **Last Updated:** 2026-09-01
 > **Updated By:** Cursor Grok 4.6
 
@@ -353,6 +355,7 @@ testflow-saas-platform/
 
 | Date | Agent | Files Changed | Summary |
 |------|-------|---------------|---------|
+| 2026-09-01 | Cursor Grok 4.6 | `SKILLS.md`, `README.md`, `skills/development-workflow.md` | Require AI agents to use a feature branch, push all work, and open a new PR — never work on `main` |
 | 2026-09-01 | Cursor Grok 4.6 | docs, README, skills, McpBrowserAutomation comment | Removed third-party repo attribution; engine plan is TestFlow-owned (`docs/QE_ENGINE_PLAN.md`) |
 | 2026-09-01 | Cursor Grok 4.6 | `docs/*`, `backend/src/ai/browser/*`, explorer/evidence/processors, tests, skills/README | Phase 1 analysis + Phase 2 interactive Playwright exploration (`BrowserAutomationInterface`, action log, credentialed login) |
 | 2026-09-01 | Cursor Grok 4.6 | AI QE backend/frontend/workers/skills/README | Transformed TestFlow into an AI Quality Engineering SaaS while preserving existing SaaS infrastructure |
@@ -366,33 +369,45 @@ testflow-saas-platform/
 
 ### Before Making Any Change
 
-1. **Read this entire file** to understand the project standards
-2. **Check §6 Implementation Tracker** to understand what exists and what doesn't
-3. **Never duplicate** existing functionality — reuse existing services, models, and utilities
-4. **Follow §3 Coding Standards** exactly — wrong patterns will break consistency
+1. **Create a new branch off `main`.** Do not check out `main` for implementation. Do not commit to `main`.
+2. **Read this entire file** to understand the project standards
+3. **Check §6 Implementation Tracker** to understand what exists and what doesn't
+4. **Never duplicate** existing functionality — reuse existing services, models, and utilities
+5. **Follow §3 Coding Standards** exactly — wrong patterns will break consistency
 
 ### While Making Changes
 
-5. **Use existing patterns** — if you need a new route, follow the structure of `routes/projects.ts`; if a new model, follow `models/User.ts`
-6. **Use the error hierarchy** — throw `AppError` subclasses, never send raw `res.status().json()` for errors in route handlers
-7. **Use Winston logger** — never `console.log`
-8. **Use environment variables** — add new ones to `.env.example` with documentation
-9. **Maintain type safety** — always type function parameters and return values
-10. **Keep Docker Compose updated** — if you add a new service, add it to `docker-compose.yml`
+6. **Use existing patterns** — if you need a new route, follow the structure of `routes/projects.ts`; if a new model, follow `models/User.ts`
+7. **Use the error hierarchy** — throw `AppError` subclasses, never send raw `res.status().json()` for errors in route handlers
+8. **Use Winston logger** — never `console.log`
+9. **Use environment variables** — add new ones to `.env.example` with documentation
+10. **Maintain type safety** — always type function parameters and return values
+11. **Keep Docker Compose updated** — if you add a new service, add it to `docker-compose.yml`
 
 ### After Making Changes
 
-11. **Update §6 Implementation Tracker** — move items from "Not Yet Started" → "In Progress" → "Completed" as appropriate
-12. **Add a §7 Change Log entry** with: date, agent name, files changed, and a one-line summary
-13. **Update §4 File & Folder Conventions** if you added new directories or changed the structure
-14. **Update §2 Tech Stack** if you added a new dependency
-15. **Verify README.md** — if your change affects the public API, architecture, or setup instructions, update the README too
+12. **Commit and push every change on your feature branch** — do not leave work only on the local machine, and do not push to `main`
+13. **Open a new pull request** from your branch into `main`. Do not merge it yourself unless a human explicitly asks you to
+14. **Update §6 Implementation Tracker** — move items from "Not Yet Started" → "In Progress" → "Completed" as appropriate
+15. **Add a §7 Change Log entry** with: date, agent name, files changed, and a one-line summary
+16. **Update §4 File & Folder Conventions** if you added new directories or changed the structure
+17. **Update §2 Tech Stack** if you added a new dependency
+18. **Verify README.md** — if your change affects the public API, architecture, or setup instructions, update the README too
 
 ### Git Commit Conventions
 
-- Branch naming: `feature/<name>`, `fix/<name>`, `chore/<name>`
+**Hard rule for every AI agent**
+
+| Must | Must not |
+|------|----------|
+| Create a **new branch** from latest `main` before editing | Work, commit, or push on `main` |
+| Commit **all** changes on that branch | Leave uncommitted work |
+| Push the branch to `origin` | Force-push `main` |
+| Open a **new pull request** targeting `main` | Push commits directly to `main` or reuse `main` as the working branch |
+
+- Branch naming: `feature/<name>`, `fix/<name>`, `chore/<name>` (or the platform-required `cursor/<name>` prefix when running as a Cursor cloud agent)
 - Commit messages: `feat: ...`, `fix: ...`, `chore: ...`, `docs: ...` (conventional commits)
-- Always create a feature branch — never commit directly to `main`
+- `main` is protected by policy even if the remote does not enforce it. Treat a direct commit to `main` as a process failure.
 
 ### Pricing Tiers (for reference when implementing billing logic)
 
