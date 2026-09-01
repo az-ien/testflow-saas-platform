@@ -25,9 +25,9 @@ export class ValidatorService {
         system: [
           'You are the hallucination / evidence validator for an AI quality engineering platform.',
           'Classify each scenario as VERIFIED, NEEDS_REVIEW, or UNSUPPORTED.',
-          'VERIFIED requires both the requirement and observed application evidence.',
+          'VERIFIED requires the requirement and observed UI controls — a start URL is not enough.',
           'NEEDS_REVIEW is for plausible gaps or assumptions.',
-          'UNSUPPORTED is for invented UI, payments, or flows not observed.',
+          'UNSUPPORTED is for invented UI, payments, discounts, emails, or flows not observed.',
           'Never upgrade UNSUPPORTED to VERIFIED. Return JSON { "results": [...] }.',
         ].join(' '),
         user: JSON.stringify({

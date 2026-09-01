@@ -22,8 +22,8 @@ Only items that are implemented in this repository and covered by code, APIs, or
 
 | Feature | Location | Notes |
 |---------|----------|-------|
-| AI planner | `backend/src/ai/planner/` | Evidence-based scenarios; LLM optional |
-| Hallucination validator | `backend/src/ai/validator/` | VERIFIED / NEEDS_REVIEW / UNSUPPORTED |
+| AI planner | `backend/src/ai/planner/` | Evidence-first scenarios; unmatched AC kept as review/unsupported |
+| Hallucination validator | `backend/src/ai/validator/` | VERIFIED / NEEDS_REVIEW / UNSUPPORTED; start URL is not control proof |
 | AI generator | `backend/src/ai/generator/` + Playwright adapter | Approved scenarios → Playwright files |
 | AI healer | `backend/src/ai/healer/` | Failure analysis, no assertion deletion |
 | Configurable AI providers | `backend/src/ai/providers/` | heuristic, OpenAI-compatible, Anthropic |
@@ -52,8 +52,8 @@ Only items that are implemented in this repository and covered by code, APIs, or
 | Add a requirement | Completed |
 | Ask AI to analyze the application | Completed (`POST /api/test-plans`) |
 | Explore through Playwright | Completed for interactive exploration (Phase 2). Login-walled apps require project `TEST_USERNAME`/`TEST_PASSWORD`. |
-| Create evidence-backed scenarios | Partial — planner still uses heuristics (Phase 4) |
-| Validate scenarios | Completed (classification exists; over-trust of start-URL refs is Phase 5) |
+| Create evidence-backed scenarios | Completed for observed UI (Phase 4). Unmatched criteria stay NEEDS_REVIEW or UNSUPPORTED. |
+| Validate scenarios | Completed (Phase 5). A start URL is not treated as proof of a control. |
 | Review/approve | Completed |
 | Generate automated tests | Partial — Playwright-like files in DB, not a workspace run (Phase 7) |
 | Execute in isolated workers | Completed for **connected repo** tests; generated files are not what runs (Phase 8) |

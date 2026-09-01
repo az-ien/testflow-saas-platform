@@ -309,7 +309,7 @@ testflow-saas-platform/
 | Redux state management | `frontend/src/features/` | auth, projects, runs slices |
 | Terraform foundation | `terraform/main.tf` | AWS VPC, RDS PostgreSQL, S3, security groups |
 | AI QE models + migration | `backend/src/models/*`, `backend/migrations/20260901000000-create-ai-qe-schema.js` | Requirements through healing |
-| Planner / validator / generator / healer | `backend/src/ai/` | Heuristic + optional LLM |
+| Planner / validator / generator / healer | `backend/src/ai/` | Evidence-first planner + strict validator; generator/healer still thinner |
 | Playwright explorer | `backend/src/ai/browser/` + `mcp/playwright` re-export | Interactive Chromium via `BrowserAutomationInterface` (click/fill/login, action log). MCP backend is not production. |
 | AI workflow queue | `backend/src/orchestration/` | EXPLORE, PLAN, VALIDATE, GENERATE, ANALYZE, HEAL, RE_RUN |
 | AI worker | `backend/src/workers/aiWorker.ts` | `ai-workflow` BullMQ consumer |
@@ -325,7 +325,6 @@ testflow-saas-platform/
 | GitLab/Bitbucket/Azure DevOps webhooks | Metadata accepted | Build inbound trigger routes |
 | `pyproject.toml` support | Detection exists | Full package-manager install support |
 | Playwright MCP stdio | Client exists; default backend is Playwright | Do not set `BROWSER_AUTOMATION_BACKEND=mcp` — it throws by design |
-| Evidence-driven planner | Heuristic + optional LLM | Stop planning from unmatched acceptance criteria (Phase 4) |
 | Real generated-test execution | Files stored in JSONB | Workspace write, compile, run generated specs (Phases 7–8) |
 | Browser-based healing | Log/string classification | Reproduce in Playwright, validate patch (Phases 10–11) |
 | GitHub generated-test PRs | Service + UI | OAuth app; token always required |
@@ -355,6 +354,7 @@ testflow-saas-platform/
 
 | Date | Agent | Files Changed | Summary |
 |------|-------|---------------|---------|
+| 2026-09-01 | Cursor Grok 4.6 | planner, validator, evidence matching, scenario evidence_refs, tests, docs/skills | Evidence-first planner and strict validator (control locators required; start URL is not proof) |
 | 2026-09-01 | Cursor Grok 4.6 | `SKILLS.md`, `README.md`, `skills/development-workflow.md` | Require AI agents to use a feature branch, push all work, and open a new PR — never work on `main` |
 | 2026-09-01 | Cursor Grok 4.6 | docs, README, skills, McpBrowserAutomation comment | Removed third-party repo attribution; engine plan is TestFlow-owned (`docs/QE_ENGINE_PLAN.md`) |
 | 2026-09-01 | Cursor Grok 4.6 | `docs/*`, `backend/src/ai/browser/*`, explorer/evidence/processors, tests, skills/README | Phase 1 analysis + Phase 2 interactive Playwright exploration (`BrowserAutomationInterface`, action log, credentialed login) |
