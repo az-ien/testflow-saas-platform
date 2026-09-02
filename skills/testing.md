@@ -34,7 +34,12 @@ npm install
 npm run build
 ```
 
-There is still no frontend test runner (pre-existing gap).
+```bash
+cd frontend
+npm test
+```
+
+Vitest covers small pure helpers (`gitLabels`). There is still no Playwright UI suite for the dashboard.
 
 ## Manual workflow check
 
@@ -49,9 +54,10 @@ There is still no frontend test runner (pre-existing gap).
 9. Execute generated tests (no customer repository required)
 10. On failure, open AI Healing and approve/reject the proposal
 
+CI (`.github/workflows/ci.yml`) runs backend Jest (excluding slow Chromium suites), Sequelize migrations against Postgres, frontend build + Vitest, and the test-worker TypeScript build.
+
 ## Known test gaps
 
-- No API integration tests against Postgres
-- No worker isolation tests in CI
+- `RUN_API_INTEGRATION=true` is required for live API/Postgres tests (placeholder suite exists)
 - No Playwright UI tests of the SaaS dashboard
-- Live MCP process is not integration-tested
+- Live MCP process is not integration-tested (not the production backend)

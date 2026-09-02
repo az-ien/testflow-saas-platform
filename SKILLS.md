@@ -6,7 +6,7 @@
 >
 > **Git is mandatory:** create your own branch, commit and push **all** work on that branch, and open a **new pull request**. **Never work on `main`.** Never commit, push, or merge directly to `main`.
 >
-> **Last Updated:** 2026-09-01
+> **Last Updated:** 2026-09-02
 > **Updated By:** Cursor Grok 4.6
 
 ---
@@ -145,14 +145,14 @@ TestFlow is an **orchestration service** — it does not keep its own test suite
 | Ecosystem | Supported Manifests |
 |-----------|---------------------|
 | Node.js | `package-lock.json`, `pnpm-lock.yaml`, `yarn.lock`, or `package.json` |
-| Python | `requirements.txt` repositories; `pyproject.toml` detection exists but full install support is planned |
+| Python | `requirements.txt`, plus `pyproject.toml` via poetry / pdm / uv / pip |
 | Java | `pom.xml` via Maven |
 
 #### Key API Fields
 
 - **`testPattern`** — optional glob passed to the framework runner. If omitted, the framework's native test discovery is used.
 - **`repoAccessToken`** — optional. For private repos, the worker injects this into the clone URL. For public repos, leave empty.
-- **`repoProvider`** — `github`, `gitlab`, `bitbucket`, or `azure-devops`. Only GitHub webhook triggers are currently implemented; the others are accepted as metadata.
+- **`repoProvider`** — `github`, `gitlab`, `bitbucket`, or `azure-devops`. Inbound webhooks exist for all four when a token or signature is configured.
 
 ---
 
@@ -214,8 +214,13 @@ testflow-saas-platform/
 │       ├── Dockerfile
 │       └── package.json
 │
+├── docs/
+│   └── openapi.yaml            ← Served at /api/openapi.yaml
+├── .github/workflows/ci.yml    ← Backend/frontend/worker CI
+│
 └── terraform/                  ← AWS infrastructure
     ├── main.tf                 ← VPC, RDS, S3, security groups
+    ├── compute.tf              ← ElastiCache Redis + ECS Fargate
     └── variables.tf
 ```
 
@@ -316,34 +321,27 @@ testflow-saas-platform/
 | QE APIs | `backend/src/routes/{requirements,testPlans,scenarios,approvals,generatedTests,healing,qe}.ts` | Authenticated + ownership-checked |
 | AI QE frontend | `frontend/src/pages/*` | Workflow navigation |
 | Workspace git publish | `backend/src/ai/git/`, Approvals, Generated Tests | Stored diff, approval, feature-branch PR; never `main` |
+| Artifact download + optional S3 | `/api/artifacts`, `TestExecutor.uploadReport` | Prefix isolation; `aws s3 sync` when configured |
+| Secrets at rest | `FieldEncryption` | AES-256-GCM |
+| Orgs, Jira, email, OpenAPI, CI, Terraform Redis/ECS | routes + `docs/openapi.yaml` + `.github/workflows` + `terraform/compute.tf` | See skills/completed-work.md |
 | skills/ knowledge base | `skills/` | Status docs for the next agent |
 
 ### 🔧 In Progress / Partially Implemented
 
 | Feature | Status | What Remains |
 |---------|--------|-------------|
-| S3 artifact uploads | Report dirs detected; local evidence screenshots stored | Wire `uploadReport()` to S3 and add authenticated download |
-| GitLab/Bitbucket/Azure DevOps webhooks | Metadata accepted | Build inbound trigger routes |
-| `pyproject.toml` support | Detection exists | Full package-manager install support |
 | Playwright MCP stdio | Client exists; default backend is Playwright | Do not set `BROWSER_AUTOMATION_BACKEND=mcp` — it throws by design |
 | GitHub generated-test PRs | Diff + approval + feature-branch PR | OAuth app; inline review comments |
-| Org tenancy | User+project isolation | Organization model |
-| Stripe AI meters | API usage counters | Stripe billing dimensions |
+| Stripe AI meters | Usage counters + optional meter events | Create matching Stripe meter products |
+| S3 signed URLs | Optional CLI sync | Presigned download URLs |
 
 ### ❌ Not Yet Started
 
 | Feature | Priority | Notes |
 |---------|----------|-------|
-| Terraform Redis/ElastiCache | MEDIUM | Redis not provisioned in cloud |
-| Terraform ECS/EKS deployment | MEDIUM | No compute provisioning |
-| Email verification flow | LOW | Feature flag exists (`FEATURE_EMAIL_VERIFICATION`) but not implemented |
-| SendGrid email integration | LOW | `.env.example` has `SENDGRID_API_KEY`; no email sending code exists yet |
-| Backend API integration tests | HIGH | AI unit tests exist; Postgres/API tests do not |
-| Test suite for frontend | MEDIUM | No testing framework configured |
-| CI/CD pipeline | HIGH | No GitHub Actions / workflow files |
-| API documentation (OpenAPI/Swagger) | MEDIUM | No spec file |
-| WebSocket real-time updates | LOW | Dashboard currently polls |
-| Organization tenancy | MEDIUM | User isolation exists; org model does not |
+| Cluster gVisor/Firecracker sandbox | LOW | Per-job Chromium + ECS tasks only |
+| GitHub OAuth App | LOW | Feature-branch PRs use a stored PAT |
+| Playwright UI tests of the dashboard | MEDIUM | Vitest covers helpers only |
 
 ---
 
@@ -353,6 +351,7 @@ testflow-saas-platform/
 
 | Date | Agent | Files Changed | Summary |
 |------|-------|---------------|---------|
+| 2026-09-02 | Cursor Grok 4.6 | artifacts, encryption, orgs, jira, adapters, CI, terraform, openapi, email, websockets, tests, skills | Remaining-work slice: download API, secrets at rest, CI, OpenAPI, orgs, Jira, quality-gate workflow, Redis/ECS terraform |
 | 2026-09-01 | Cursor Grok 4.6 | git diff/publish, GitHubService, GeneratedTest git fields, approvals, UI, tests, docs/skills | Workspace git flow: stored diffs, publish approval, feature-branch PRs only; dashboard-only without a token |
 | 2026-09-01 | Cursor Grok 4.6 | healer, FailureReproducer, processors, healing UI, tests, docs/skills | Browser-reproduce generated-test failures, assertion-safe locator patches, isolation rerun, apply only after approval |
 | 2026-09-01 | Cursor Grok 4.6 | generator, PlaywrightAdapter, GeneratedTestRunner, generated_tests statuses, execute route, UI, tests, docs/skills | Generate real Playwright workspaces from discovered selectors and execute those files (COMPILES / PASSED / FAILED) |

@@ -105,27 +105,16 @@ See also [`skills/completed-work.md`](skills/completed-work.md).
 
 | Feature | Status | What works | What remains | Known issues |
 |---------|--------|------------|--------------|--------------|
-| Playwright MCP stdio | Isolated stub | Optional `PlaywrightMcpClient`; default exploration uses Playwright Chromium | Process pooling, robust JSON-RPC | `BROWSER_AUTOMATION_BACKEND=mcp` throws; do not treat MCP as working |
-| S3 artifact uploads | Report dirs detected | Local evidence screenshots under `ARTIFACT_DIR` | S3 upload + signed URLs | `uploadReport()` still returns null |
+| Playwright MCP stdio | Isolated stub | Default exploration uses Playwright Chromium | Not required for the SaaS path | `BROWSER_AUTOMATION_BACKEND=mcp` throws |
+| S3 artifact uploads | Optional CLI sync | Local artifacts + authenticated download | Signed download URLs | No-op without AWS |
 | GitHub PRs for generated tests | Diff + approval | Feature-branch PR after git/heal approval when a token exists; dashboard-only without one | OAuth app, inline review comments | Head cannot be `main` |
-| AI usage billing | Limits enforced in API | Planning/healing/exploration counters | Stripe meters | Stripe still run-centric |
-| Token encryption | Not in logs | Tokens passed only into the owning job | Encrypt at rest | Plaintext DB columns |
-| Org tenancy | User + project checks | Cross-user QE records are rejected | Organization model | Single-user projects |
-| GitLab/Bitbucket/Azure inbound triggers | Metadata accepted | Provider stored on project | Inbound routes | GitHub only |
-| `pyproject.toml` install | Detection exists | Python repos detected | Poetry/pdm/uv install | Unchanged worker debt |
-| Terraform Redis/compute | Foundation only | VPC, RDS, S3 | ElastiCache, ECS/EKS | Unchanged |
+| AI usage billing | Limits + optional meters | `UsageMeter` + `STRIPE_METER_*` | Stripe dashboard products | Still also run-centric |
 
 ## Remaining Work
 
-- Authenticated artifact download API
-- Encrypt repo tokens and env vars at rest
-- API integration tests, frontend tests, GitHub Actions CI
-- OpenAPI spec
-- Jira import, org RBAC, WebSockets
-- Additional generator adapters beyond Playwright
-- GitHub Actions quality gate on generated workspaces
-- Cluster-level browser sandboxing
-- Email verification / SendGrid
+- Cluster-level gVisor/Firecracker browser sandboxing
+- GitHub OAuth App and inline review comments
+- Playwright UI tests of the live dashboard stack
 
 Do not treat these as done. Details: [`skills/remaining-work.md`](skills/remaining-work.md).
 
@@ -135,8 +124,8 @@ Do not treat these as done. Details: [`skills/remaining-work.md`](skills/remaini
 - Application exploration requires a reachable `applicationUrl` from the AI worker. Login-walled apps also need `TEST_USERNAME` / `TEST_PASSWORD` (or APP_/E2E_/LOGIN_ equivalents) on the project.
 - Generated tests are stored in the database with a workspace diff. Publishing requires approval and a GitHub token; without a token they stay in the dashboard. They are never committed to `main`.
 - Unsupported scenarios cannot be approved for generation.
-- Multi-framework AI generation is not implemented; only Playwright generation is first-class.
-- Local artifacts are not yet served through an authenticated download API.
+- Playwright remains the default agentic generator; Cypress and pytest adapters emit starter files.
+- Authenticated artifact listing and download live at `/api/artifacts/:projectId`. Signed S3 URLs are still remaining.
 
 ## Development Setup
 

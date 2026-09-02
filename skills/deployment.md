@@ -15,6 +15,7 @@ Migrations:
 
 1. `20260831000000-create-initial-schema.js` — original SaaS tables
 2. `20260901000000-create-ai-qe-schema.js` — AI QE tables and additive columns
+3. Additive generated-test, git, org, Jira, and AI-key migrations under `backend/migrations/`
 
 Development still uses `sequelize.sync({ alter: true })` when `NODE_ENV !== 'production'`.
 
@@ -31,14 +32,9 @@ The AI worker image copies `backend/` source so it shares models, AI services, a
 
 ## Terraform
 
-Existing module still provisions AWS VPC, RDS PostgreSQL 15, S3, and security groups only.
+`terraform/main.tf` provisions VPC, RDS PostgreSQL 15, S3, and security groups.
 
-Not provisioned:
-
-- Redis / ElastiCache
-- ECS/EKS services
-- Load balancer
-- AI worker compute
+`terraform/compute.tf` adds ElastiCache Redis, an ECS cluster, and Fargate task definitions/services for the API, AI worker, and test worker. Images are variables (`api_image`, `ai_worker_image`, `test_worker_image`). A public load balancer is still not included.
 
 ## Environment
 
@@ -51,3 +47,6 @@ See `.env.example`. New variables:
 - `AI_WORKER_CONCURRENCY`
 - `EXPLORATION_MAX_PAGES`
 - `EXPLORATION_TIMEOUT_MS`
+- `ENCRYPTION_KEY`
+- `LOG_SHIP_URL`
+- `STRIPE_METER_*`

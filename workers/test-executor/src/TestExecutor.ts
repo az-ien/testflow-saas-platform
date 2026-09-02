@@ -108,7 +108,17 @@ export class TestExecutor {
     const reportDir = reportDirs.find((dir) => fs.existsSync(dir));
     if (reportDir) {
       this.log(`Report artifacts available at ${path.relative(this.workDir, reportDir)}`);
-      // TODO: upload reportDir to S3 and return the public/signed report URL.
+      const bucket = process.env.S3_BUCKET;
+      if (bucket && process.env.AWS_ACCESS_KEY_ID && !String(process.env.AWS_ACCESS_KEY_ID).includes('xxxxx')) {
+        try {
+          const prefix = `s3://${bucket}/runs/${this.data.runId || 'report'}`;
+          this.exec('aws', ['s3', 'sync', reportDir, prefix], this.workDir, 120_000);
+          this.log(`Uploaded report to ${prefix}`);
+          return prefix;
+        } catch (err: any) {
+          this.log(`S3 upload skipped: ${err.message}`);
+        }
+      }
     }
 
     return null;
@@ -157,8 +167,19 @@ export class TestExecutor {
     this.ensurePythonVirtualEnv();
     const python = this.pythonExecutable();
 
-    if (hasRequirements) {
+    if (this.exists('poetry.lock') || (this.exists('pyproject.toml') && this.pyprojectUses('poetry'))) {
+      this.log('Installing via Poetry');
+      this.exec('poetry', ['install', '--no-interaction', '--no-ansi'], this.workDir, 600_000);
+    } else if (this.exists('pdm.lock') || (this.exists('pyproject.toml') && this.pyprojectUses('pdm'))) {
+      this.log('Installing via PDM');
+      this.exec('pdm', ['install'], this.workDir, 600_000);
+    } else if (this.exists('uv.lock') || (this.exists('pyproject.toml') && this.pyprojectUses('uv'))) {
+      this.log('Installing via uv');
+      this.exec('uv', ['sync'], this.workDir, 600_000);
+    } else if (hasRequirements) {
       this.exec(python, ['-m', 'pip', 'install', '-r', 'requirements.txt', '-q'], this.workDir, 600_000);
+    } else if (this.exists('pyproject.toml')) {
+      this.exec(python, ['-m', 'pip', 'install', '.', '-q'], this.workDir, 600_000);
     }
 
     if (this.data.framework === 'pytest' || this.data.framework === 'selenium') {
@@ -458,6 +479,14 @@ export class TestExecutor {
 
   private exists(relativePath: string): boolean {
     return fs.existsSync(path.join(this.workDir, relativePath));
+  }
+
+  private pyprojectUses(tool: 'poetry' | 'pdm' | 'uv'): boolean {
+    if (!this.exists('pyproject.toml')) return false;
+    const text = fs.readFileSync(path.join(this.workDir, 'pyproject.toml'), 'utf8');
+    if (tool === 'poetry') return /\[tool\.poetry\]/.test(text);
+    if (tool === 'pdm') return /\[tool\.pdm\]/.test(text);
+    return /\[tool\.uv\]/.test(text) || /requires-python/.test(text);
   }
 
   private isPythonPlaywrightRepo(): boolean {

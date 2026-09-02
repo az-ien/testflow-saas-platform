@@ -69,10 +69,9 @@ Agent folders already exist:
 
 ## What is missing (engine depth)
 
-1. **Optional MCP backend** — Agent → `BrowserAutomationInterface` → Playwright or future MCP, without coupling the SaaS to an IDE MCP session.
-2. **Full SaaS-path smoke** — dashboard click-through of requirement → explore → approve → generate → execute → heal still needs a live stack; engine unit/integration tests cover generate/run/heal/git.
+1. **Optional MCP backend** — not required; production uses Playwright Chromium.
+2. **Full SaaS-path smoke** — dashboard click-through still needs a live Compose stack.
 3. **Customer-repo source healing** — connected-repo failures are classified from logs + a live page; only generated Playwright files are patched.
-4. **CI quality gate on generated workspaces** — GitHub Actions report/trace upload after a feature-branch PR.
 
 ---
 
@@ -126,7 +125,7 @@ Do not implement every phase at once.
 | **9** | Git/GitHub | Workspace diff → approval → feature-branch PR — **done** |
 | **10** | Browser failure analysis | Reproduce with Playwright — **done** for generated tests |
 | **11** | Safe healing | Patch + isolation rerun + approval; never drop assertions — **done** for generated tests |
-| **12** | Hardening and docs | E2E smoke + limitation list |
+| **12** | Hardening and docs | CI, OpenAPI, secrets, artifacts, remaining SaaS gaps — **mostly done** |
 
 ---
 

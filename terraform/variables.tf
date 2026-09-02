@@ -51,3 +51,49 @@ variable "db_password" {
   type        = string
   sensitive   = true
 }
+
+variable "redis_node_type" {
+  description = "ElastiCache Redis node type"
+  type        = string
+  default     = "cache.t3.micro"
+}
+
+variable "api_image" {
+  type    = string
+  default = "testflow/api:latest"
+}
+
+variable "ai_worker_image" {
+  type    = string
+  default = "testflow/ai-worker:latest"
+}
+
+variable "test_worker_image" {
+  type    = string
+  default = "testflow/test-worker:latest"
+}
+
+variable "api_cpu" {
+  type    = number
+  default = 512
+}
+
+variable "api_memory" {
+  type    = number
+  default = 1024
+}
+
+variable "worker_cpu" {
+  type    = number
+  default = 1024
+}
+
+variable "worker_memory" {
+  type    = number
+  default = 2048
+}
+
+variable "api_count" {
+  type    = number
+  default = 1
+}

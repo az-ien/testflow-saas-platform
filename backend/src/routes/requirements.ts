@@ -6,6 +6,7 @@ import { getOwnedProject } from '../services/projectAccess';
 import { assertOwned } from '../services/projectAccess';
 import { ValidationError } from '../middleware/errorHandler';
 import githubService from '../services/GitHubService';
+import jiraService from '../services/JiraService';
 import { recordActivity } from '../services/AiAudit';
 
 const router = Router();
@@ -100,6 +101,49 @@ router.post(
             acceptanceCriteria: issue.body,
             source: 'github_issue',
             externalId: String(issue.number),
+            externalUrl: issue.htmlUrl,
+            status: 'ready',
+          },
+        });
+        created.push(requirement);
+      }
+      res.status(201).json({ imported: created.length, requirements: created });
+    } catch (err) { next(err); }
+  }
+);
+
+router.post(
+  '/import/jira',
+  [body('projectId').isUUID(), body('issueKey').optional().trim()],
+  validate,
+  async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const project = await getOwnedProject(req.body.projectId, req.user!.userId);
+      if (!project.jiraBaseUrl || !project.jiraProjectKey || !project.jiraEmail || !project.jiraApiToken) {
+        throw new ValidationError('Project is missing Jira site, project key, email, or API token');
+      }
+      const issues = await jiraService.listOpenIssues({
+        baseUrl: project.jiraBaseUrl,
+        email: project.jiraEmail,
+        apiToken: project.jiraApiToken,
+        projectKey: project.jiraProjectKey,
+      });
+      const selected = req.body.issueKey
+        ? issues.filter((issue) => issue.key === req.body.issueKey)
+        : issues;
+      const created = [];
+      for (const issue of selected) {
+        const [requirement] = await Requirement.findOrCreate({
+          where: { projectId: project.id, key: issue.key },
+          defaults: {
+            projectId: project.id,
+            userId: req.user!.userId,
+            key: issue.key,
+            title: issue.title,
+            description: issue.body,
+            acceptanceCriteria: issue.body,
+            source: 'jira_issue',
+            externalId: issue.key,
             externalUrl: issue.htmlUrl,
             status: 'ready',
           },

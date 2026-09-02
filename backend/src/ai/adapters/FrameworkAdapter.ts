@@ -1,10 +1,23 @@
+import { GeneratedFile, PlannedScenario, RepoInventory } from '../types';
 import { PlaywrightAdapter } from './PlaywrightAdapter';
+import { CypressAdapter } from './CypressAdapter';
+import { PytestAdapter } from './PytestAdapter';
 
-export type FrameworkAdapter = PlaywrightAdapter;
+export interface FrameworkGenerator {
+  generate(input: {
+    requirementKey: string;
+    requirementTitle: string;
+    scenario: PlannedScenario;
+    applicationUrl?: string | null;
+    inventory?: RepoInventory | null;
+  }): GeneratedFile[];
+}
 
-export const getFrameworkAdapter = (_framework?: string): PlaywrightAdapter => {
-  // Playwright is the first-class agentic framework. Additional adapters can be added later.
+export const getFrameworkAdapter = (framework?: string): FrameworkGenerator => {
+  const name = (framework || 'playwright').toLowerCase();
+  if (name === 'cypress') return new CypressAdapter();
+  if (name === 'pytest' || name === 'selenium') return new PytestAdapter();
   return new PlaywrightAdapter();
 };
 
-export { PlaywrightAdapter };
+export { PlaywrightAdapter, CypressAdapter, PytestAdapter };

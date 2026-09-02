@@ -75,7 +75,7 @@ export interface GeneratedFile {
   path: string;
   content: string;
   language: string;
-  kind: 'test' | 'page_object' | 'fixture' | 'test_data' | 'config';
+  kind: 'test' | 'page_object' | 'fixture' | 'test_data' | 'config' | 'workflow';
 }
 
 export interface RepoInventory {

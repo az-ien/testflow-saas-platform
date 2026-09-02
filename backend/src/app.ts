@@ -1,4 +1,7 @@
 import express, { Application, Request, Response } from 'express';
+import fs from 'fs';
+import http from 'http';
+import path from 'path';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
@@ -26,6 +29,9 @@ import approvalRoutes from './routes/approvals';
 import generatedTestRoutes from './routes/generatedTests';
 import healingRoutes from './routes/healing';
 import qeRoutes from './routes/qe';
+import artifactRoutes from './routes/artifacts';
+import organizationRoutes from './routes/organizations';
+import { attachEventHub } from './services/EventHub';
 
 dotenv.config();
 
@@ -109,6 +115,24 @@ app.use('/api/approvals', approvalRoutes);
 app.use('/api/generated-tests', generatedTestRoutes);
 app.use('/api/healing', healingRoutes);
 app.use('/api/qe', qeRoutes);
+app.use('/api/artifacts', artifactRoutes);
+app.use('/api/organizations', organizationRoutes);
+app.get('/api/openapi.yaml', (_req: Request, res: Response) => {
+  const candidates = [
+    path.resolve(process.cwd(), 'docs/openapi.yaml'),
+    path.resolve(__dirname, '../../docs/openapi.yaml'),
+    path.resolve(__dirname, '../../../docs/openapi.yaml'),
+  ];
+  const spec = candidates.find((file) => fs.existsSync(file));
+  if (!spec) {
+    res.status(404).json({ error: 'OpenAPI spec not found' });
+    return;
+  }
+  res.sendFile(spec);
+});
+app.get('/api/docs', (_req: Request, res: Response) => {
+  res.redirect('/api/openapi.yaml');
+});
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 app.use((_req: Request, res: Response) => {
@@ -130,7 +154,9 @@ const bootstrap = async (): Promise<void> => {
     await connectRedis();
     logger.info('✅ Redis connected');
 
-    app.listen(PORT, () => {
+    const server = http.createServer(app);
+    attachEventHub(server);
+    server.listen(PORT, () => {
       logger.info(`🚀 TestFlow API running on port ${PORT} [${process.env.NODE_ENV}]`);
     });
   } catch (error) {

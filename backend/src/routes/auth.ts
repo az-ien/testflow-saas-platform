@@ -98,4 +98,15 @@ router.post('/api-key/regenerate', authenticateJWT, async (req: Request, res: Re
   }
 });
 
+router.post('/verify-email', async (req: Request, res: Response, next: NextFunction) => {
+  try {
+    if (!req.body.token) {
+      res.status(400).json({ error: 'Verification token required' });
+      return;
+    }
+    const result = await authService.verifyEmail(req.body.token);
+    res.json(result);
+  } catch (err) { next(err); }
+});
+
 export default router;

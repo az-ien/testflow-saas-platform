@@ -1,0 +1,177 @@
+openapi: 3.0.3
+info:
+  title: TestFlow AI QE API
+  version: 1.0.0
+  description: Authenticated Quality Engineering routes. JWT or X-API-Key required unless noted.
+servers:
+  - url: /api
+paths:
+  /auth/register:
+    post:
+      summary: Register
+      security: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, password, firstName, lastName]
+              properties:
+                email: { type: string }
+                password: { type: string }
+                firstName: { type: string }
+                lastName: { type: string }
+                company: { type: string }
+      responses:
+        '201': { description: Created }
+  /auth/login:
+    post:
+      summary: Login
+      security: []
+      responses:
+        '200': { description: Tokens }
+  /auth/verify-email:
+    post:
+      summary: Verify email token
+      security: []
+      responses:
+        '200': { description: Verified }
+  /projects:
+    get:
+      summary: List projects
+      responses:
+        '200': { description: Project list }
+    post:
+      summary: Create project
+      responses:
+        '201': { description: Created }
+  /requirements:
+    get:
+      summary: List requirements
+      responses:
+        '200': { description: Requirement list }
+    post:
+      summary: Create requirement
+      responses:
+        '201': { description: Created }
+  /requirements/import/github:
+    post:
+      summary: Import GitHub issues
+      responses:
+        '201': { description: Imported }
+  /requirements/import/jira:
+    post:
+      summary: Import Jira issues
+      responses:
+        '201': { description: Imported }
+  /test-plans:
+    post:
+      summary: Start explore → plan → validate
+      responses:
+        '202': { description: Queued }
+  /approvals:
+    get:
+      summary: Pending plan, git publish, and healing approvals
+      responses:
+        '200': { description: Approval queues }
+  /generated-tests:
+    get:
+      summary: List generated workspaces
+      responses:
+        '200': { description: Generated tests }
+  /generated-tests/{id}/execute:
+    post:
+      summary: Execute generated Playwright files
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '202': { description: Queued }
+  /generated-tests/{id}/pull-request:
+    post:
+      summary: Open a feature-branch PR
+      parameters:
+        - in: path
+          name: id
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Pull request }
+  /artifacts/{projectId}:
+    get:
+      summary: List project artifacts
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: Artifact list }
+  /artifacts/{projectId}/file:
+    get:
+      summary: Download an owned artifact
+      parameters:
+        - in: path
+          name: projectId
+          required: true
+          schema: { type: string }
+        - in: query
+          name: path
+          required: true
+          schema: { type: string }
+      responses:
+        '200': { description: File }
+  /organizations/me:
+    get:
+      summary: List organizations for the current user
+      responses:
+        '200': { description: Memberships }
+  /qe/summary:
+    get:
+      summary: Dashboard counters
+      responses:
+        '200': { description: Summary }
+  /qe/coverage:
+    get:
+      summary: Requirement-to-automation coverage
+      responses:
+        '200': { description: Coverage }
+  /webhooks/github:
+    post:
+      summary: GitHub inbound trigger
+      security: []
+      responses:
+        '200': { description: Queued }
+  /webhooks/gitlab:
+    post:
+      summary: GitLab inbound trigger
+      security: []
+      responses:
+        '200': { description: Queued }
+  /webhooks/bitbucket:
+    post:
+      summary: Bitbucket inbound trigger
+      security: []
+      responses:
+        '200': { description: Queued }
+  /webhooks/azure-devops:
+    post:
+      summary: Azure DevOps inbound trigger
+      security: []
+      responses:
+        '200': { description: Queued }
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+    apiKey:
+      type: apiKey
+      in: header
+      name: X-API-Key
+security:
+  - bearerAuth: []
+  - apiKey: []

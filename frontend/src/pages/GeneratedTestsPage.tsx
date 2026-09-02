@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { generatedTestsAPI } from '../services/api';
 import WorkspaceDiffPreview from '../components/WorkspaceDiffPreview';
+import { gitLabel } from '../lib/gitLabels';
 
 const badgeClass = (value?: string) => {
   if (value === 'compiles' || value === 'passed' || value === 'generated' || value === 'ready' || value === 'pr_opened') return 'badge-passed';
@@ -8,14 +9,6 @@ const badgeClass = (value?: string) => {
   if (value === 'queued' || value === 'running' || value === 'awaiting_approval') return 'badge-running';
   if (value === 'unavailable' || value === 'none') return 'badge-queued';
   return 'badge-queued';
-};
-
-const gitLabel = (status?: string) => {
-  if (status === 'awaiting_approval') return 'needs publish approval';
-  if (status === 'pr_opened') return 'PR opened';
-  if (status === 'unavailable') return 'dashboard only';
-  if (status === 'rejected') return 'publish rejected';
-  return status || 'no git';
 };
 
 const canOpenPr = (status?: string) => status === 'awaiting_approval' || status === 'rejected' || status === 'none';

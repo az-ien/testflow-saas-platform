@@ -22,6 +22,8 @@ import ApprovalsPage from './pages/ApprovalsPage';
 import GeneratedTestsPage from './pages/GeneratedTestsPage';
 import HealingPage from './pages/HealingPage';
 import CoveragePage from './pages/CoveragePage';
+import OrganizationsPage from './pages/OrganizationsPage';
+import VerifyEmailPage from './pages/VerifyEmailPage';
 
 const PrivateRoute = ({ children }: { children: React.ReactNode }) => {
   const token = useAppSelector(s => s.auth.accessToken);
@@ -48,6 +50,7 @@ export default function App() {
         <Route path="/login"   element={<PublicRoute><LoginPage /></PublicRoute>} />
         <Route path="/register" element={<PublicRoute><RegisterPage /></PublicRoute>} />
         <Route path="/pricing" element={<PricingPage />} />
+        <Route path="/verify-email" element={<VerifyEmailPage />} />
 
         <Route path="/dashboard" element={<PrivateRoute><DashboardLayout /></PrivateRoute>}>
           <Route index element={<DashboardPage />} />
@@ -64,6 +67,7 @@ export default function App() {
           <Route path="runs/:id" element={<RunDetailPage />} />
           <Route path="healing" element={<HealingPage />} />
           <Route path="coverage" element={<CoveragePage />} />
+          <Route path="organizations" element={<OrganizationsPage />} />
           <Route path="settings" element={<SettingsPage />} />
         </Route>
 

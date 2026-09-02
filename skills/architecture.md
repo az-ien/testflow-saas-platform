@@ -95,12 +95,12 @@ Every AI write is also recorded in `ai_activities` and `workflow_jobs` with `use
 | JWT + API keys | Working | DONE | KEEP | Still the auth plane |
 | Stripe | Routes + webhook hardening | DONE | KEEP | Extend usage dimensions, do not remove |
 | GitHub webhooks | Push/PR auto-run | DONE | KEEP + ADD | Add issue import and generated-test PRs |
-| S3 artifact upload | Detect only | PARTIAL | KEEP | Still pending actual S3 upload |
-| Terraform | VPC, RDS, S3 | PARTIAL | KEEP | Redis/compute still not provisioned |
-| GitLab/Bitbucket inbound | Metadata only | PARTIAL | KEEP | Not required for AI QE core |
-| `pyproject.toml` install | Detection only | PARTIAL | KEEP | Worker still needs package-manager wiring |
-| Email verification / SendGrid | Flags only | REMAINING | KEEP | Out of AI QE core |
-| Organization tenancy | User scoping only | REMAINING | KEEP | Documented; user isolation is enforced |
+| S3 artifact upload | Detect + optional `aws s3 sync` | PARTIAL | KEEP | Signed URLs still optional |
+| Terraform | VPC, RDS, S3, Redis, ECS Fargate | DONE | KEEP | ALB still not included |
+| GitLab/Bitbucket inbound | Routes exist | DONE | KEEP | Signature/token when configured |
+| `pyproject.toml` install | poetry/pdm/uv/pip | DONE | KEEP | Tools must exist on the worker image |
+| Email verification / SendGrid | Implemented behind flag | DONE | KEEP | Requires SendGrid key |
+| Organization tenancy | Org + members + RBAC | DONE | KEEP | User isolation still enforced |
 
 ## Important decisions
 
