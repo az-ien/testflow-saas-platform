@@ -40,8 +40,9 @@ describe('PlaywrightAdapter', () => {
 
     expect(generatedFileIssues(files)).toEqual([]);
     expect(files.map((file) => file.kind).sort()).toEqual(
-      ['config', 'fixture', 'page_object', 'test', 'test_data'].sort()
+      ['config', 'fixture', 'page_object', 'test', 'test_data', 'workflow'].sort()
     );
+    expect(files.some((file) => file.path === '.github/workflows/testflow-quality-gate.yml')).toBe(true);
 
     const page = files.find((file) => file.kind === 'page_object')!;
     const spec = files.find((file) => file.kind === 'test')!;

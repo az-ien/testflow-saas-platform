@@ -66,6 +66,9 @@ router.get('/coverage', async (req: Request, res: Response, next: NextFunction) 
       const scenarios = (requirement as any).scenarios || [];
       const verified = scenarios.filter((s: any) => s.classification === 'VERIFIED').length;
       const generated = scenarios.filter((s: any) => s.status === 'generated').length;
+      const approved = scenarios.filter((s: any) => s.status === 'approved' || s.status === 'generated').length;
+      const unsupported = scenarios.filter((s: any) => s.classification === 'UNSUPPORTED').length;
+      const needsReview = scenarios.filter((s: any) => s.classification === 'NEEDS_REVIEW').length;
       return {
         id: requirement.id,
         key: requirement.key,
@@ -74,10 +77,30 @@ router.get('/coverage', async (req: Request, res: Response, next: NextFunction) 
         scenarioCount: scenarios.length,
         verified,
         generated,
+        approved,
+        unsupported,
+        needsReview,
+        automationCoverage: scenarios.length ? Math.round((generated / scenarios.length) * 100) : 0,
         status: requirement.status,
       };
     });
-    res.json({ coverage });
+    const totals = coverage.reduce(
+      (acc, row) => {
+        acc.requirements += 1;
+        acc.scenarios += row.scenarioCount;
+        acc.generated += row.generated;
+        acc.verified += row.verified;
+        return acc;
+      },
+      { requirements: 0, scenarios: 0, generated: 0, verified: 0 }
+    );
+    res.json({
+      coverage,
+      totals,
+      requirementCoveragePercent: totals.requirements
+        ? Math.round((coverage.filter((row) => row.generated > 0).length / totals.requirements) * 100)
+        : 0,
+    });
   } catch (err) { next(err); }
 });
 

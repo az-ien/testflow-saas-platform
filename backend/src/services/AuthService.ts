@@ -6,6 +6,8 @@ import { generateTokens, verifyRefreshToken } from '../middleware/auth';
 import { cache } from '../config/redis';
 import { logger } from '../config/logger';
 import { AppError, UnauthorizedError, ValidationError } from '../middleware/errorHandler';
+import { Organization, OrganizationMember } from '../models/Organization';
+import { emailVerificationEnabled, sendEmail } from './Mailer';
 
 interface RegisterDTO {
   email: string;
@@ -46,6 +48,23 @@ export class AuthService {
       parallelRunnersLimit: PLAN_LIMITS.free.parallel,
     });
 
+    const organization = await Organization.create({
+      name: dto.company || `${dto.firstName}'s workspace`,
+      ownerUserId: user.id,
+    });
+    await OrganizationMember.create({ organizationId: organization.id, userId: user.id, role: 'owner' });
+    await user.update({ organizationId: organization.id });
+
+    if (emailVerificationEnabled() && user.emailVerificationToken) {
+      const verifyUrl = `${process.env.FRONTEND_URL || 'http://localhost:3000'}/verify-email?token=${user.emailVerificationToken}`;
+      await sendEmail({
+        to: user.email,
+        subject: 'Verify your TestFlow email',
+        text: `Confirm your email: ${verifyUrl}`,
+        html: `<p>Confirm your email: <a href="${verifyUrl}">${verifyUrl}</a></p>`,
+      });
+    }
+
     const tokens = generateTokens({
       userId: user.id,
       email: user.email,
@@ -66,6 +85,9 @@ export class AuthService {
     }
     if (!user.isActive) {
       throw new UnauthorizedError('Account is deactivated. Contact support.');
+    }
+    if (emailVerificationEnabled() && !user.isEmailVerified) {
+      throw new UnauthorizedError('Email is not verified. Check your inbox.');
     }
 
     const tokens = generateTokens({
@@ -121,6 +143,13 @@ export class AuthService {
     await User.update({ apiKey: newKey }, { where: { id: userId } });
     logger.info(`API key regenerated for user: ${userId}`);
     return { apiKey: newKey };
+  }
+
+  async verifyEmail(token: string) {
+    const user = await User.findOne({ where: { emailVerificationToken: token } });
+    if (!user) throw new ValidationError('Invalid or expired verification token');
+    await user.update({ isEmailVerified: true, emailVerificationToken: null });
+    return { message: 'Email verified' };
   }
 
   // ─── Get Profile ───────────────────────────────────────────────────────────

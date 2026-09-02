@@ -1,6 +1,7 @@
 import { PLAN_LIMITS, PlanId } from '../models/Subscription';
 import { User } from '../models/User';
 import { PlanLimitError } from '../middleware/errorHandler';
+import { recordStripeMeter } from './StripeMeters';
 
 export type UsageDimension = 'runs' | 'planning' | 'healing' | 'exploration';
 
@@ -38,4 +39,6 @@ export const incrementUsage = async (userId: string, dimension: UsageDimension):
     by: 1,
     where: { id: userId },
   });
+  const user = await User.findByPk(userId);
+  await recordStripeMeter(user?.stripeCustomerId, dimension);
 };

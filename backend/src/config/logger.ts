@@ -32,6 +32,18 @@ const transports: winston.transport[] = [
   }),
 ];
 
+if (process.env.LOG_SHIP_URL) {
+  transports.push(
+    new winston.transports.Http({
+      host: new URL(process.env.LOG_SHIP_URL).hostname,
+      port: Number(new URL(process.env.LOG_SHIP_URL).port || (process.env.LOG_SHIP_URL.startsWith('https') ? 443 : 80)),
+      path: new URL(process.env.LOG_SHIP_URL).pathname || '/',
+      ssl: process.env.LOG_SHIP_URL.startsWith('https'),
+      format: prodFormat,
+    })
+  );
+}
+
 if (process.env.NODE_ENV === 'production') {
   transports.push(
     new DailyRotateFile({

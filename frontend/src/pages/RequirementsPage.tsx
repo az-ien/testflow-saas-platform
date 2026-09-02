@@ -44,9 +44,33 @@ export default function RequirementsPage() {
           <h1 className="text-2xl font-bold">Requirements</h1>
           <p className="text-muted text-sm mt-1">User stories, acceptance criteria, and GitHub issues that drive AI planning</p>
         </div>
-        <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
-          <Plus size={16} /> New Requirement
-        </button>
+        <div className="flex gap-2">
+          <button
+            className="btn-secondary !text-xs"
+            onClick={async () => {
+              const projectId = form.projectId || projects[0]?.id;
+              if (!projectId) return;
+              await requirementsAPI.importGithub({ projectId });
+              await load();
+            }}
+          >
+            Import GitHub
+          </button>
+          <button
+            className="btn-secondary !text-xs"
+            onClick={async () => {
+              const projectId = form.projectId || projects[0]?.id;
+              if (!projectId) return;
+              await requirementsAPI.importJira({ projectId });
+              await load();
+            }}
+          >
+            Import Jira
+          </button>
+          <button onClick={() => setShowModal(true)} className="btn-primary flex items-center gap-2">
+            <Plus size={16} /> New Requirement
+          </button>
+        </div>
       </div>
 
       {!items.length && (

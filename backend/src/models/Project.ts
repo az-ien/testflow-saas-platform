@@ -8,6 +8,7 @@ import {
 } from 'sequelize';
 import { v4 as uuidv4 } from 'uuid';
 import sequelize from '../config/database';
+import { decryptJson, decryptString, encryptJson, encryptString } from '../services/FieldEncryption';
 
 export type Framework = 'playwright' | 'cypress' | 'selenium' | 'pytest' | 'testng' | 'jest' | 'mocha';
 export type RepoProvider = 'github' | 'gitlab' | 'bitbucket' | 'azure_devops';
@@ -38,6 +39,14 @@ export class Project extends Model<
   declare autoCreatePullRequest: CreationOptional<boolean>;
   declare autoHealOnFailure: CreationOptional<boolean>;
   declare explorationMaxPages: CreationOptional<number>;
+  declare organizationId: CreationOptional<string | null>;
+  declare jiraBaseUrl: CreationOptional<string | null>;
+  declare jiraProjectKey: CreationOptional<string | null>;
+  declare jiraEmail: CreationOptional<string | null>;
+  declare jiraApiToken: CreationOptional<string | null>;
+  declare aiProvider: CreationOptional<string | null>;
+  declare openaiApiKey: CreationOptional<string | null>;
+  declare anthropicApiKey: CreationOptional<string | null>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 }
@@ -114,7 +123,7 @@ Project.init(
     applicationUrl: {
       type: DataTypes.STRING(1000),
       allowNull: true,
-      comment: 'Live application URL used by Playwright MCP / explorer',
+      comment: 'Live application URL used by the Playwright explorer',
     },
     approvalPolicy: {
       type: DataTypes.STRING(30),
@@ -138,6 +147,14 @@ Project.init(
       type: DataTypes.INTEGER,
       defaultValue: 6,
     },
+    organizationId: { type: DataTypes.UUID, allowNull: true },
+    jiraBaseUrl: { type: DataTypes.STRING(500), allowNull: true },
+    jiraProjectKey: { type: DataTypes.STRING(50), allowNull: true },
+    jiraEmail: { type: DataTypes.STRING(255), allowNull: true },
+    jiraApiToken: { type: DataTypes.TEXT, allowNull: true },
+    aiProvider: { type: DataTypes.STRING(30), allowNull: true },
+    openaiApiKey: { type: DataTypes.TEXT, allowNull: true },
+    anthropicApiKey: { type: DataTypes.TEXT, allowNull: true },
     createdAt: DataTypes.DATE,
     updatedAt: DataTypes.DATE,
   },
@@ -145,6 +162,30 @@ Project.init(
     sequelize,
     tableName: 'projects',
     modelName: 'Project',
+    hooks: {
+      beforeSave: (project) => {
+        if (project.repoAccessToken) project.repoAccessToken = encryptString(project.repoAccessToken) || project.repoAccessToken;
+        if (project.webhookSecret) project.webhookSecret = encryptString(project.webhookSecret) || project.webhookSecret;
+        if (project.jiraApiToken) project.jiraApiToken = encryptString(project.jiraApiToken) || project.jiraApiToken;
+        if (project.openaiApiKey) project.openaiApiKey = encryptString(project.openaiApiKey) || project.openaiApiKey;
+        if (project.anthropicApiKey) project.anthropicApiKey = encryptString(project.anthropicApiKey) || project.anthropicApiKey;
+        if (project.environmentVariables) {
+          project.environmentVariables = encryptJson(project.environmentVariables);
+        }
+      },
+      afterFind: (found) => {
+        const rows = Array.isArray(found) ? found : found ? [found] : [];
+        for (const project of rows) {
+          const row = project as Project;
+          row.repoAccessToken = decryptString(row.repoAccessToken) || row.repoAccessToken;
+          row.webhookSecret = decryptString(row.webhookSecret) || row.webhookSecret;
+          row.jiraApiToken = decryptString(row.jiraApiToken) || row.jiraApiToken;
+          row.openaiApiKey = decryptString(row.openaiApiKey) || row.openaiApiKey;
+          row.anthropicApiKey = decryptString(row.anthropicApiKey) || row.anthropicApiKey;
+          row.environmentVariables = decryptJson(row.environmentVariables);
+        }
+      },
+    },
   }
 );
 

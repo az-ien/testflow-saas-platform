@@ -32,13 +32,22 @@ import { orchestrator } from '../orchestration/WorkflowOrchestrator';
 import { AiWorkflowJobData } from '../orchestration/queues';
 import { runQueue } from '../services/RunQueue';
 import { logger } from '../config/logger';
+import { publishUserEvent } from '../services/EventHub';
 import { ForbiddenError, NotFoundError } from '../middleware/errorHandler';
 
-const provider = getAiProvider();
-const planner = new PlannerService(provider);
-const validator = new ValidatorService(provider);
-const generator = new GeneratorService(provider);
-const healer = new HealerService(provider);
+const servicesFor = (project: Project) => {
+  const provider = getAiProvider({
+    provider: project.aiProvider,
+    openaiApiKey: project.openaiApiKey,
+    anthropicApiKey: project.anthropicApiKey,
+  });
+  return {
+    planner: new PlannerService(provider),
+    validator: new ValidatorService(provider),
+    generator: new GeneratorService(provider),
+    healer: new HealerService(provider),
+  };
+};
 const explorer = new PlaywrightExplorer();
 const generatedRunner = new GeneratedTestRunner();
 const reproducer = new FailureReproducer();
@@ -122,6 +131,12 @@ export const processAiJob = async (job: Job<AiWorkflowJobData>): Promise<void> =
         throw new Error(`Unsupported AI job: ${job.data.jobName}`);
     }
     await markWorkflow(job, 'completed');
+    publishUserEvent(job.data.userId, {
+      type: 'workflow.completed',
+      jobName: job.data.jobName,
+      projectId: job.data.projectId,
+      workflowJobId: job.data.workflowJobId,
+    });
   } catch (err: any) {
     await markWorkflow(job, 'failed', err.message);
     if (job.data.testPlanId) {
@@ -239,9 +254,11 @@ const loadExploration = async (planId: string, userId: string, projectId: string
 const planTests = async (job: AiWorkflowJobData): Promise<void> => {
   const plan = assertOwnedProjectRecord(await TestPlan.findByPk(job.testPlanId), job, 'Test plan');
   const requirement = assertOwnedProjectRecord(await Requirement.findByPk(plan.requirementId), job, 'Requirement');
+  const project = assertProject(await Project.findByPk(job.projectId), job);
 
   await plan.update({ status: 'planning' });
   const exploration = await loadExploration(plan.id, job.userId, job.projectId);
+  const { planner } = servicesFor(project);
   const scenarios = await planner.plan({
     requirementKey: requirement.key,
     title: requirement.title,
@@ -301,6 +318,7 @@ const validateScenarios = async (job: AiWorkflowJobData): Promise<void> => {
 
   const rows = await Scenario.findAll({ where: { testPlanId: plan.id, userId: job.userId, projectId: job.projectId } });
   const exploration = await loadExploration(plan.id, job.userId, job.projectId);
+  const { validator } = servicesFor(project);
   const results = await validator.validateScenarios(
     rows.map((row) => ({
       scenarioKey: row.scenarioKey,
@@ -402,6 +420,7 @@ const generateTests = async (job: AiWorkflowJobData): Promise<void> => {
     project.repoAccessToken,
     project.repoBranch || 'main'
   );
+  const { generator } = servicesFor(project);
 
   for (const scenario of scenarios) {
     const files = await generator.generate({
@@ -601,6 +620,7 @@ const analyzeFailure = async (job: AiWorkflowJobData): Promise<void> => {
     correlationId: job.correlationId || run.id,
   });
 
+  const { healer } = servicesFor(project);
   let proposal = await healer.analyze({
     title: failed[0]?.title,
     error,
@@ -828,4 +848,4 @@ export async function maybeAnalyzeFailure(run: TestRun): Promise<void> {
   });
 }
 
-logger.info(`AI processors ready (provider=${provider.name})`);
+logger.info('AI processors ready (per-project AI provider)');

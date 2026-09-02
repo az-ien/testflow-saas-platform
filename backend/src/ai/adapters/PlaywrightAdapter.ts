@@ -11,6 +11,7 @@ import {
   toPascal,
 } from '../generator/controls';
 import { assertGeneratedSafety } from '../generator/safety';
+import { qualityGateWorkflow } from '../generator/qualityGate';
 
 export class PlaywrightAdapter {
   generate(input: {
@@ -63,6 +64,12 @@ export class PlaywrightAdapter {
         content: this.config(input.applicationUrl),
         language: 'typescript',
         kind: 'config',
+      },
+      {
+        path: '.github/workflows/testflow-quality-gate.yml',
+        content: qualityGateWorkflow(),
+        language: 'yaml',
+        kind: 'workflow',
       },
     ];
 

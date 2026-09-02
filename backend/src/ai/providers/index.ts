@@ -4,23 +4,31 @@ import { AnthropicProvider } from './AnthropicProvider';
 import { HeuristicProvider } from './HeuristicProvider';
 import { OpenAiCompatibleProvider } from './OpenAiCompatibleProvider';
 
-export const getAiProvider = (): AiProvider => {
-  const configured = (process.env.AI_PROVIDER || '').toLowerCase();
+export interface AiProviderOverrides {
+  provider?: string | null;
+  openaiApiKey?: string | null;
+  anthropicApiKey?: string | null;
+}
+
+export const getAiProvider = (overrides: AiProviderOverrides = {}): AiProvider => {
+  const configured = (overrides.provider || process.env.AI_PROVIDER || '').toLowerCase();
+  const anthropicKey = overrides.anthropicApiKey || process.env.ANTHROPIC_API_KEY;
+  const openaiKey = overrides.openaiApiKey || process.env.OPENAI_API_KEY;
 
   if (configured === 'heuristic') {
     return new HeuristicProvider();
   }
 
-  if ((configured === 'anthropic' || !configured) && process.env.ANTHROPIC_API_KEY) {
+  if ((configured === 'anthropic' || !configured) && anthropicKey) {
     return new AnthropicProvider(
-      process.env.ANTHROPIC_API_KEY,
+      anthropicKey,
       process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514'
     );
   }
 
-  if ((configured === 'openai' || configured === 'openai_compatible' || !configured) && process.env.OPENAI_API_KEY) {
+  if ((configured === 'openai' || configured === 'openai_compatible' || !configured) && openaiKey) {
     return new OpenAiCompatibleProvider(
-      process.env.OPENAI_API_KEY,
+      openaiKey,
       process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1',
       process.env.OPENAI_MODEL || 'gpt-4o-mini'
     );

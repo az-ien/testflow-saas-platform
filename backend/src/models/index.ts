@@ -12,11 +12,20 @@ import { GeneratedTest } from './GeneratedTest';
 import { HealingAttempt } from './HealingAttempt';
 import { AiActivity } from './AiActivity';
 import { WorkflowJob } from './WorkflowJob';
+import { Organization, OrganizationMember } from './Organization';
 
 // ─── Existing SaaS associations ───────────────────────────────────────────────
 
 User.hasMany(Project, { foreignKey: 'userId', as: 'projects', onDelete: 'CASCADE' });
 Project.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+User.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization' });
+Organization.belongsTo(User, { foreignKey: 'ownerUserId', as: 'owner' });
+Organization.hasMany(OrganizationMember, { foreignKey: 'organizationId', as: 'members', onDelete: 'CASCADE' });
+OrganizationMember.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization' });
+OrganizationMember.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+Project.belongsTo(Organization, { foreignKey: 'organizationId', as: 'organization' });
+Organization.hasMany(Project, { foreignKey: 'organizationId', as: 'projects' });
 
 User.hasOne(Subscription, { foreignKey: 'userId', as: 'subscription', onDelete: 'CASCADE' });
 Subscription.belongsTo(User, { foreignKey: 'userId', as: 'user' });
@@ -116,4 +125,6 @@ export {
   HealingAttempt,
   AiActivity,
   WorkflowJob,
+  Organization,
+  OrganizationMember,
 };

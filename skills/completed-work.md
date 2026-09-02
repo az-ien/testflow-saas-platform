@@ -43,6 +43,22 @@ Only items that are implemented in this repository and covered by code, APIs, or
 | Usage dimensions | `PLAN_LIMITS`, `UsageMeter` | planning, exploration, healing, runs |
 | Ownership checks | `projectAccess.ts`, AI processors | userId + projectId on reads/writes |
 | Unit tests | `backend/src/ai/**/*.test.ts` | Planner, validator, generator, healer, adapters, generated runner, workspace diff, feature-branch guard, GitHub parse, isolation |
+| Artifact download | `/api/artifacts` | User/project prefix check; screenshots/traces |
+| Secrets at rest | `FieldEncryption` | AES-256-GCM for tokens, env vars, and per-project AI/Jira keys |
+| Per-project AI keys | `Project.aiProvider` + `getAiProvider(overrides)` | Falls back to process env, then heuristic |
+| Jira import | `/api/requirements/import/jira` + UI | Requires Jira site/token on the project |
+| Organizations | `/api/organizations` | Owner/admin/member; project access via org membership |
+| WebSockets | `/ws` | JWT query token; workflow completion events |
+| Cypress/pytest generation | `CypressAdapter`, `PytestAdapter` | Playwright remains default |
+| Coverage analytics | `/api/qe/coverage` | Totals + automation % + review/unsupported |
+| Email verification | `/api/auth/verify-email` + SendGrid | Gated by `FEATURE_EMAIL_VERIFICATION` |
+| Generated quality gate | `.github/workflows/testflow-quality-gate.yml` in generated workspaces | Report + trace upload |
+| SaaS CI | `.github/workflows/ci.yml` | Backend tests, migrate, frontend build |
+| OpenAPI | `docs/openapi.yaml` | Served at `/api/openapi.yaml` |
+| Inbound git webhooks | GitHub, GitLab, Bitbucket, Azure DevOps | Token/signature when configured |
+| Terraform Redis/ECS | `terraform/compute.tf` | ElastiCache Redis + Fargate API/AI/test workers |
+| Python package managers | `TestExecutor` | poetry / pdm / uv / pip |
+| Log shipping | Winston HTTP transport | `LOG_SHIP_URL` |
 
 ## Definition-of-success mapping
 

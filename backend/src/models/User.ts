@@ -37,6 +37,7 @@ export class User extends Model<
   declare monthlyHealingUsed: CreationOptional<number>;
   declare monthlyExplorationUsed: CreationOptional<number>;
   declare lastLoginAt: CreationOptional<Date | null>;
+  declare organizationId: CreationOptional<string | null>;
   declare createdAt: CreationOptional<Date>;
   declare updatedAt: CreationOptional<Date>;
 
@@ -144,6 +145,10 @@ User.init(
     },
     lastLoginAt: {
       type: DataTypes.DATE,
+      allowNull: true,
+    },
+    organizationId: {
+      type: DataTypes.UUID,
       allowNull: true,
     },
     createdAt: DataTypes.DATE,

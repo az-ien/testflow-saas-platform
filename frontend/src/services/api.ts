@@ -61,6 +61,7 @@ export const authAPI = {
   logout: () => api.post('/auth/logout'),
   getProfile: () => api.get('/auth/me'),
   regenerateApiKey: () => api.post('/auth/api-key/regenerate'),
+  verifyEmail: (token: string) => api.post('/auth/verify-email', { token }),
 };
 
 // ─── Projects Endpoints ───────────────────────────────────────────────────────
@@ -92,6 +93,17 @@ export const subscriptionsAPI = {
   openPortal: () => api.post('/subscriptions/portal'),
 };
 
+export const organizationsAPI = {
+  me: () => api.get('/organizations/me'),
+  create: (data: { name: string }) => api.post('/organizations', data),
+  invite: (id: string, data: { email: string; role?: string }) => api.post(`/organizations/${id}/members`, data),
+};
+
+export const artifactsAPI = {
+  list: (projectId: string, path?: string) => api.get(`/artifacts/${projectId}`, { params: { path } }),
+  fileUrl: (projectId: string, path: string) => `/api/artifacts/${projectId}/file?path=${encodeURIComponent(path)}`,
+};
+
 export const requirementsAPI = {
   list: (params?: { projectId?: string }) => api.get('/requirements', { params }),
   create: (data: any) => api.post('/requirements', data),
@@ -100,6 +112,8 @@ export const requirementsAPI = {
   remove: (id: string) => api.delete(`/requirements/${id}`),
   importGithub: (data: { projectId: string; issueNumber?: number }) =>
     api.post('/requirements/import/github', data),
+  importJira: (data: { projectId: string; issueKey?: string }) =>
+    api.post('/requirements/import/jira', data),
 };
 
 export const testPlansAPI = {

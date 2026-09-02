@@ -5,7 +5,7 @@ import { logout } from '../features/auth/authSlice';
 import {
   LayoutDashboard, FolderGit2, PlayCircle, Settings,
   ChevronLeft, ChevronRight, LogOut, Zap, Bell,
-  ClipboardList, Brain, ListChecks, ShieldCheck, FileCode2, Sparkles, PieChart
+  ClipboardList, Brain, ListChecks, ShieldCheck, FileCode2, Sparkles, PieChart, Users
 } from 'lucide-react';
 
 const NAV = [
@@ -19,6 +19,7 @@ const NAV = [
   { to: '/dashboard/runs',         icon: PlayCircle,      label: 'Test Runs' },
   { to: '/dashboard/healing',      icon: Sparkles,        label: 'AI Healing' },
   { to: '/dashboard/coverage',     icon: PieChart,        label: 'Coverage' },
+  { to: '/dashboard/organizations',icon: Users,           label: 'Organizations' },
   { to: '/dashboard/settings',     icon: Settings,        label: 'Settings' },
 ];
 
@@ -27,6 +28,15 @@ export default function DashboardLayout() {
   const dispatch = useAppDispatch();
   const navigate = useNavigate();
   const user = useAppSelector(s => s.auth.user);
+
+  React.useEffect(() => {
+    const token = localStorage.getItem('accessToken');
+    if (!token) return undefined;
+    const api = import.meta.env.VITE_API_URL || '';
+    const url = `${String(api).replace(/^http/, 'ws')}/ws?token=${encodeURIComponent(token)}`;
+    const socket = new WebSocket(url);
+    return () => socket.close();
+  }, []);
 
   const handleLogout = () => {
     dispatch(logout());
